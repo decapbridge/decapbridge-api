@@ -1,0 +1,4 @@
+"id","bookmark","user","role","collection","search","layout","layout_query","layout_options","refresh_interval","filter","icon","color"
+1,,"ab547f02-d8cf-4dc4-920e-0bbf5b312ee2",,"directus_users",,"tabular",,,,,"bookmark",
+2,,"ab547f02-d8cf-4dc4-920e-0bbf5b312ee2",,"directus_activity",,"tabular",,,,,"bookmark",
+3,,"ab547f02-d8cf-4dc4-920e-0bbf5b312ee2",,"sites",,"tabular",,,,,"bookmark",

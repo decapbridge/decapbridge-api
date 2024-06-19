@@ -1,0 +1,151 @@
+#!/usr/bin/env sh
+
+
+# Start development server
+dev() {
+  npm exec -- \
+    concurrently -n extensions,package,directus \
+    "./run dev__extensions" \
+    "./run dev__package" \
+    "./run dev__directus"
+}
+dev__extensions() {
+  extension build --watch --no-minify
+}
+dev__package() {
+  __waitfor extensions/custom-extensions/dist/api.js
+  build__jwt_payload_hack
+  build__package
+}
+dev__directus() {
+  __waitfor extensions/custom-extensions/package.json
+  directus start
+}
+
+
+# Build production server
+build() {
+  build__extensions
+  build__package
+  build__jwt_payload_hack
+}
+build__extensions() {
+  extension build
+}
+build__package() {
+  sed 's/extensions\/custom-extensions\/dist/dist/g' package.json > extensions/custom-extensions/package.json
+}
+build__jwt_payload_hack() {
+  auth_file="./node_modules/@directus/api/dist/services/authentication.js"
+  if ! grep -q "payload\.app_metadata" "$auth_file"; then
+    auth_file_contents="$(cat "$auth_file")"
+    echo "$auth_file_contents" \
+      | sed '/tokenPayload = {/s/$/ app_metadata: payload.app_metadata,/' \
+      > "$auth_file"
+  fi
+}
+
+
+# Apply schema and config tables
+config_apply() {
+  build
+  config_apply__bootstrap
+}
+config_apply__bootstrap() {
+  directus bootstrap --skipAdminInit
+  directus schema apply --yes ./config/snapshot.yml
+}
+
+
+# Snapshot schema and config tables
+config_snapshot() {
+  build
+  directus schema snapshot --yes ./config/snapshot.yml
+}
+
+
+# Run various directus commands
+directus() {
+  npm exec -- directus "$@"
+}
+
+# Run various directus-extension commands
+extension() {
+  npm exec -- directus-extension "$@"
+}
+
+
+# Build docker image
+docker_build() {
+  docker build \
+    --build-arg GIT_REV="$(git rev-parse HEAD)" \
+    -t "$dirname" \
+    .
+}
+
+
+# Run docker image
+docker_run() {
+  docker run -it --rm \
+    --env-file=.env \
+    -p 80:80 \
+    "$dirname" "$@"
+}
+
+
+# Start production server
+start() {
+  if [ -n "$DATABASE_URL" ]; then
+    export DB_CONNECTION_STRING="$DATABASE_URL"
+  fi
+  config_apply__bootstrap
+  directus start
+}
+
+# Meta
+# ===============
+dirname="$(basename "$(pwd)")"
+tab=$(printf '\t')
+
+__waitfor() {
+  until [ -f "$1" ]; do
+    sleep 0.1
+  done
+}
+
+__commands() {
+  grep -v '^ ' "$0" \
+    | grep -v '}' \
+    | grep -v '__' \
+    | grep -v '^ ' \
+    | grep -B1 '() {' \
+    | grep '.' \
+    | sed '/^# /s/^# \(.*\)$/\1/' \
+    | sed 's/() {$//; s/_/:/g' \
+    | tr '\n' '\t' \
+    | sed 's/\t--\t/\n/g' \
+    | awk -F'\t' '{print $2 "\t" $1}'
+}
+
+# Show this help text
+help() {
+  echo "
+Directus development commands
+
+Usage:
+  $(basename "$0") <command> [opts...]
+
+Commands:
+$(__commands | column -t -s "$tab" | awk '{print "  "$0}')
+"
+}
+
+command="$(echo "$@" | tr ':' '_')"
+
+if [ -z "$command" ]; then
+  help
+  exit 1
+fi
+
+# Run commands
+$command

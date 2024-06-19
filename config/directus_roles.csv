@@ -1,0 +1,3 @@
+"id","name","icon","description","ip_access","enforce_tfa","admin_access","app_access"
+"1d61a012-dfa9-4d6b-bd04-f91271c2a791","Administrator","verified","$t:admin_description",,false,true,true
+"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","User","supervised_user_circle",,,false,false,false

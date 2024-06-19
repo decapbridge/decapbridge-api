@@ -1,0 +1,58 @@
+{
+  "name": "custom-extensions",
+  "version": "1.0.0",
+  "type": "module",
+  "directus:extension": {
+    "type": "bundle",
+    "path": {
+      "app": "extensions/custom-extensions/dist/app.js",
+      "api": "extensions/custom-extensions/dist/api.js"
+    },
+    "entries": [
+      {
+        "type": "endpoint",
+        "name": "health",
+        "source": "src/health/index.ts"
+      },
+      {
+        "type": "hook",
+        "name": "config-tables",
+        "source": "src/config-tables/index.ts"
+      },
+      {
+        "type": "hook",
+        "name": "signup-notification",
+        "source": "src/signup-notification/index.ts"
+      },
+      {
+        "type": "hook",
+        "name": "user-signup",
+        "source": "src/user-signup/index.ts"
+      },
+      {
+        "type": "endpoint",
+        "name": "contact-form",
+        "source": "src/contact-form/index.ts"
+      },
+      {
+        "type": "endpoint",
+        "name": "identity",
+        "source": "src/identity/index.ts"
+      }
+    ],
+    "host": "^10.10.4"
+  },
+  "dependencies": {
+    "directus": "^10.12.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@directus/cli": "^9.14.3",
+    "@directus/extensions-sdk": "11.0.8",
+    "@directus/tsconfig": "^1.0.1",
+    "@directus/types": "^11.1.3",
+    "@types/node": "^20.14.5",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5"
+  }
+}

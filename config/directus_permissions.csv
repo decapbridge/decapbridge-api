@@ -1,0 +1,7 @@
+"id","role","collection","action","permissions","validation","presets","fields"
+2,,"directus_users","create","{}","{}",,"[""*""]"
+5,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","directus_users","read",,,,"[""first_name"",""last_name"",""email"",""password"",""last_access"",""id""]"
+6,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","directus_users","update",,,,"[""first_name"",""last_name"",""password""]"
+7,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","directus_users","delete",,,,
+8,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","directus_revisions","read",,,,"[""id"",""activity"",""collection"",""item"",""version"",""parent"",""delta"",""data""]"
+9,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","directus_activity","read",,"{}",,"[""*""]"

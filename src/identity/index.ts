@@ -5,24 +5,17 @@ import { DEFAULT_AUTH_PROVIDER } from '@directus/api/constants';
 import { parse } from 'qs';
 
 const endpoint: EndpointConfig = (router, ctx) => {
-  router.post('/:siteName/token', async (req, res) => {
+  router.post('/:siteId/token', async (req, res) => {
     const schema = await ctx.getSchema();
     const auth = new (ctx.services.AuthenticationService as typeof AuthenticationService)({ schema });
     const items = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
     try {
-      const siteName = req.params['siteName']
-      const sites = await items.readByQuery({
-        filter: {
-          name: {
-            _eq: siteName
-          }
-        }
-      })
-      const [site] = sites
+      const siteId = req.params['siteId'];
+      const site = await items.readOne(siteId);
       if (!site) {
         throw new ForbiddenError();
       }
-      const body: any = parse(String(req.read()))
+      const body: any = parse(String(req.read()));
       const payload = {
         email: body.username,
         password: body.password,
@@ -30,8 +23,8 @@ const endpoint: EndpointConfig = (router, ctx) => {
           repo: site['repo'],
           access_token: site['access_token'],
         }
-      }
-      const result = await auth.login(DEFAULT_AUTH_PROVIDER, payload)
+      };
+      const result = await auth.login(DEFAULT_AUTH_PROVIDER, payload);
       return res.json({
         token_type: 'bearer',
         access_token: result.accessToken,
@@ -54,7 +47,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
       }
     }
   });
-  router.get('/:siteName/user', async (req, res) => {
+  router.get('/:siteId/user', async (req, res) => {
     const schema = await ctx.getSchema();
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
     const maybeUserId = (req as any).accountability?.user;
@@ -71,7 +64,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         },
       });
     } else {
-      return res.status(403).send('Unauthorized')
+      return res.status(403).send('Unauthorized');
     }
   });
 };

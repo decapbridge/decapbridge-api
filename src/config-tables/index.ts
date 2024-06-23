@@ -18,7 +18,9 @@ const queries: Record<string, Query> = {
     },
   },
   directus_presets: {},
-  directus_settings: {},
+  directus_settings: {
+    fields: ['id', 'project_name', 'project_url', 'project_color']
+  },
 };
 
 const tables = Object.keys(queries);

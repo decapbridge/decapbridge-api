@@ -1,2 +1,2 @@
-"id","project_name","project_url","project_color","project_logo","public_foreground","public_background","public_note","auth_login_attempts","auth_password_policy","storage_asset_transform","storage_asset_presets","custom_css","storage_default_folder","basemaps","mapbox_key","module_bar","project_descriptor","default_language","custom_aspect_ratios","public_favicon","default_appearance","default_theme_light","theme_light_overrides","default_theme_dark","theme_dark_overrides","report_error_url","report_bug_url","report_feature_url","public_registration","public_registration_verify_email","public_registration_role","public_registration_email_filter"
-1,"Decap Bridge","http://localhost:3000","#228BE6",,,,,25,,"all",,,,,,,,"en-US",,,"auto",,,,,,,,false,true,,
+"id","project_name","project_url","project_color"
+1,"DecapBridge","https://decapbridge.com","#e64980"

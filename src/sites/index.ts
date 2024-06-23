@@ -137,7 +137,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       let inviteUrl = site['cms_url'];
 
-      if (!invitedUser.email) {
+      if (!invitedUser.password) {
         const payload = { email, scope: 'password-reset', hash: getSimpleHash('null') };
         const token = jwt.sign(payload, getSecret(), { expiresIn: '30d', issuer: 'directus' });
         const { project_url } = await settings.readSingleton({});

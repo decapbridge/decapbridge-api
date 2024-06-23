@@ -1,10 +1,11 @@
 "id","role","collection","action","permissions","validation","presets","fields","permissions._and"
 2,,"directus_users","create","{}","{}",,"[""*""]",
-5,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","directus_users","read",,,,"[""first_name"",""last_name"",""email"",""password"",""last_access"",""id""]",
+5,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","directus_users","read",,,,"[""first_name"",""last_name"",""email"",""password"",""last_access"",""id"",""avatar"",""collaborator_sites""]","[{""_or"":[{""id"":{""_eq"":""$CURRENT_USER""}},{""collaborator_sites"":{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}}}]}]"
 6,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","directus_users","update",,,,"[""first_name"",""last_name"",""password""]",
 7,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","directus_users","delete",,,,,
 10,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","sites","create","{}","{}",,"[""*""]",
-11,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","sites","read",,,,"[""id"",""status"",""sort"",""user_updated"",""date_created"",""user_created"",""date_updated"",""repo"",""access_token"",""collaborators""]","[{""_or"":[{""user_created"":{""_eq"":""$CURRENT_USER""}},{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""}}}]}]"
-12,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","sites","update",,,,"[""repo"",""access_token""]","[{""user_created"":{""_eq"":""$CURRENT_USER""}}]"
+11,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","sites","read",,,,"[""id"",""status"",""sort"",""user_updated"",""date_created"",""user_created"",""date_updated"",""repo"",""access_token"",""collaborators"",""cms_url""]","[{""_or"":[{""user_created"":{""_eq"":""$CURRENT_USER""}},{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""}}}]}]"
+12,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","sites","update",,,,"[""repo"",""access_token"",""cms_url"",""collaborators""]","[{""user_created"":{""_eq"":""$CURRENT_USER""}}]"
 13,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","sites","delete",,,,,"[{""user_created"":{""_eq"":""$CURRENT_USER""}}]"
 14,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","sites_directus_users","read",,,,"[""id"",""sites_id"",""directus_users_id""]","[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}}]"
+15,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","sites_directus_users","delete",,,,,"[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}}]"

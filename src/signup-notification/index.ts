@@ -7,27 +7,16 @@ const hook: HookConfig = async ({ action }, ctx) => {
     const schema = await ctx.getSchema();
     const mail = new (ctx.services.MailService as typeof MailService)({ schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
-    const { project_name, project_url } = await settings.readSingleton({});
+    const { project_name } = await settings.readSingleton({});
     action('users.create', async ({ payload }) => {
       ctx.logger.info(`User ${payload.email} just signed up.`);
       if (payload.email !== adminEmail) {
         await mail.send({
           to: adminEmail,
-          subject: 'A new user just signed up!',
+          subject: `A new user just signed up to ${project_name}`,
           text: `Email: ${payload.email}`,
         });
       }
-      await mail.send({
-        to: payload.email,
-        subject: `Welcome to ${project_name}!`,
-        template: {
-          name: 'welcome',
-          data: {
-            first_name: payload.first_name,
-            url: `${project_url}/dashboard/profile`,
-          },
-        },
-      });
     });
   }
 };

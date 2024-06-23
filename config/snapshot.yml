@@ -37,7 +37,7 @@ collections:
       color: null
       display_template: null
       group: null
-      hidden: true
+      hidden: false
       icon: import_export
       item_duplication_fields: null
       note: null
@@ -51,6 +51,32 @@ collections:
     schema:
       name: sites_directus_users
 fields:
+  - collection: directus_users
+    field: collaborator_sites
+    type: alias
+    meta:
+      collection: directus_users
+      conditions: null
+      display: related-values
+      display_options:
+        template: '{{sites_id.repo}}'
+      field: collaborator_sites
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: null
+      options:
+        enableCreate: false
+        template: '{{sites_id.repo}}'
+      readonly: false
+      required: false
+      sort: 1
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
   - collection: sites
     field: id
     type: uuid
@@ -373,7 +399,7 @@ fields:
         masked: true
       readonly: false
       required: true
-      sort: 10
+      sort: 9
       special: null
       translations: null
       validation: null
@@ -412,7 +438,7 @@ fields:
         trim: true
       readonly: false
       required: true
-      sort: 9
+      sort: 8
       special: null
       translations: null
       validation: null
@@ -440,8 +466,9 @@ fields:
     meta:
       collection: sites
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: '{{directus_users_id.email}}'
       field: collaborators
       group: null
       hidden: false
@@ -449,6 +476,7 @@ fields:
       note: null
       options:
         enableCreate: false
+        template: '{{directus_users_id.email}}'
       readonly: false
       required: false
       sort: 11
@@ -458,6 +486,45 @@ fields:
       validation: null
       validation_message: null
       width: full
+  - collection: sites
+    field: cms_url
+    type: string
+    meta:
+      collection: sites
+      conditions: null
+      display: null
+      display_options: null
+      field: cms_url
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options:
+        iconLeft: link
+      readonly: false
+      required: true
+      sort: 10
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: cms_url
+      table: sites
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: sites_directus_users
     field: id
     type: integer
@@ -502,14 +569,16 @@ fields:
     meta:
       collection: sites_directus_users
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: '{{repo}}'
       field: sites_id
       group: null
       hidden: true
-      interface: null
+      interface: select-dropdown-m2o
       note: null
-      options: null
+      options:
+        template: '{{repo}}'
       readonly: false
       required: false
       sort: 2
@@ -540,14 +609,15 @@ fields:
     meta:
       collection: sites_directus_users
       conditions: null
-      display: null
+      display: user
       display_options: null
       field: directus_users_id
       group: null
       hidden: true
-      interface: null
+      interface: select-dropdown-m2o
       note: null
-      options: null
+      options:
+        template: '{{email}}'
       readonly: false
       required: false
       sort: 3
@@ -650,7 +720,7 @@ relations:
       one_collection: directus_users
       one_collection_field: null
       one_deselect_action: nullify
-      one_field: null
+      one_field: collaborator_sites
       sort_field: null
     schema:
       table: sites_directus_users

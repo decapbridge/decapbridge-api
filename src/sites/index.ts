@@ -51,11 +51,12 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       const public_url = ctx.env['PUBLIC_URL'];
 
-      const { data }: any = await fetch(`${public_url}/items/sites/${site['id']}`, {
+      const permissionsTestResponse = await fetch(`${public_url}/items/sites/${site['id']}`, {
         headers: {
           Authorization: `Bearer ${result.accessToken}`
         }
       });
+      const { data } = await permissionsTestResponse.json()
 
       if (!data?.id) {
         throw new InvalidPayloadError({ reason: 'You don\'t have permission to access this site' });

@@ -8,20 +8,37 @@ import { getSimpleHash } from '@directus/utils';
 import jwt from 'jsonwebtoken';
 import { parse, stringify } from 'qs';
 
+const fetchUserByEmail = async (users: UsersService, userEmail: string) => {
+  const userData = await users.readByQuery({
+    filter: {
+      email: {
+        _eq: userEmail
+      }
+    }
+  })
+  return userData[0] as User | undefined
+}
 
 const endpoint: EndpointConfig = (router, ctx) => {
   router.post('/:siteId/token', async (req, res) => {
     const schema = await ctx.getSchema();
     const auth = new (ctx.services.AuthenticationService as typeof AuthenticationService)({ schema });
-    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema, accountability: (req as any).accountability });
+    const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
+    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
+
     try {
+      const body: any = parse(String(req.read()));
+
+      const user = await fetchUserByEmail(users, body.username);
+      if (!user || !user.role) {
+        throw new InvalidPayloadError({ reason: 'User does not exist' });
+      }
 
       const site = await sites.readOne(req.params['siteId']);
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
 
-      const body: any = parse(String(req.read()));
       const payload = {
         email: body.username,
         password: body.password,
@@ -31,6 +48,19 @@ const endpoint: EndpointConfig = (router, ctx) => {
         }
       };
       const result = await auth.login(DEFAULT_AUTH_PROVIDER, payload);
+
+      const public_url = ctx.env['PUBLIC_URL'];
+
+      const { data }: any = await fetch(`${public_url}/items/sites/${site['id']}`, {
+        headers: {
+          Authorization: `Bearer ${result.accessToken}`
+        }
+      });
+
+      if (!data?.id) {
+        throw new InvalidPayloadError({ reason: 'You don\'t have permission to access this site' });
+      }
+
       return res.json({
         token_type: 'bearer',
         access_token: result.accessToken,
@@ -54,9 +84,6 @@ const endpoint: EndpointConfig = (router, ctx) => {
   router.get('/:siteId/user', async (req, res) => {
     const schema = await ctx.getSchema();
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
-    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema, accountability: (req as any).accountability });
-    await sites.readOne(req.params['siteId']);
-
     const maybeUserId = (req as any).accountability?.user;
     if (maybeUserId) {
       const user = await users.readOne(maybeUserId)
@@ -88,18 +115,8 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Missing "email" field in body' });
       }
 
-      const fetchUserByEmail = async (userEmail: string) => {
-        const userData = await users.readByQuery({
-          filter: {
-            email: {
-              _eq: userEmail
-            }
-          }
-        })
-        return userData[0] as User | undefined
-      }
 
-      let invitedUser = await fetchUserByEmail(email);
+      let invitedUser = await fetchUserByEmail(users, email);
 
       if (!invitedUser) {
         await users.createOne({
@@ -109,7 +126,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         });
       }
 
-      invitedUser = await fetchUserByEmail(email);
+      invitedUser = await fetchUserByEmail(users, email);
       if (!invitedUser) {
         throw new Error('Could not create user.')
       }

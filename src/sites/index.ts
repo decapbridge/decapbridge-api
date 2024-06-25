@@ -12,7 +12,7 @@ const fetchUserByEmail = async (users: UsersService, userEmail: string) => {
   const userData = await users.readByQuery({
     filter: {
       email: {
-        _eq: userEmail
+        _icontains: userEmail
       }
     }
   })

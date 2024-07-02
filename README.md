@@ -1,12 +1,12 @@
-
 ## Installation
+
 ```sh
 git clone git@github.com:loteoo/directus-starter.git
 cd directus-starter
 npm install
 cp .env.example .env
 run config:apply
-run directus users passwd --email dev@alexlotte.ca --password password
+run directus users passwd --email hello@decapbridge.com --password password
 run help
 ```
 

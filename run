@@ -19,6 +19,7 @@ dev__package() {
 }
 dev__directus() {
   __waitfor extensions/custom-extensions/package.json
+  export SOURCE_COMMIT="$(git rev-parse HEAD)"
   directus start
 }
 
@@ -78,7 +79,6 @@ extension() {
 # Build docker image
 docker_build() {
   docker build \
-    --build-arg GIT_REV="$(git rev-parse HEAD)" \
     -t "$dirname" \
     .
 }
@@ -88,6 +88,7 @@ docker_build() {
 docker_run() {
   docker run -it --rm \
     --env-file=.env \
+    -e SOURCE_COMMIT="$(git rev-parse HEAD)" \
     -p 80:80 \
     "$dirname" "$@"
 }
@@ -95,9 +96,6 @@ docker_run() {
 
 # Start production server
 start() {
-  if [ -n "$DATABASE_URL" ]; then
-    export DB_CONNECTION_STRING="$DATABASE_URL"
-  fi
   config_apply__bootstrap
   directus start
 }

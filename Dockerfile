@@ -10,13 +10,10 @@ RUN npm ci
 COPY . .
 RUN ./run build
 
-ARG GIT_REV
-
 ENV \
   NODE_ENV="production" \
   PORT=80 \
-  TZ="America/New_York" \
-  GIT_REV=${GIT_REV}
+  TZ="America/New_York"
 
 # Start app
 EXPOSE 80

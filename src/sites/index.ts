@@ -20,6 +20,8 @@ const fetchUserByEmail = async (users: UsersService, userEmail: string) => {
 }
 
 const endpoint: EndpointConfig = (router, ctx) => {
+  const public_url = ctx.env['PUBLIC_URL'];
+
   router.post('/:siteId/token', async (req, res) => {
     const schema = await ctx.getSchema();
     const auth = new (ctx.services.AuthenticationService as typeof AuthenticationService)({ schema });
@@ -48,8 +50,6 @@ const endpoint: EndpointConfig = (router, ctx) => {
         }
       };
       const result = await auth.login(DEFAULT_AUTH_PROVIDER, payload);
-
-      const public_url = ctx.env['PUBLIC_URL'];
 
       const permissionsTestResponse = await fetch(`${public_url}/items/sites/${site['id']}`, {
         headers: {
@@ -87,12 +87,14 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
     const maybeUserId = (req as any).accountability?.user;
     if (maybeUserId) {
-      const user = await users.readOne(maybeUserId)
+      const user = await users.readOne(maybeUserId);
+      const full_name = user['first_name'] ? `${user['first_name']} ${user['last_name']}` : undefined;
+      const avatar_url = user['avatar'] ? `${public_url}/assets/${user['avatar']}?key=system-medium-cover` : undefined;
       return res.json({
         ...user,
         user_metadata: {
-          full_name: `${user['first_name']} ${user['last_name']}`,
-          avatar_url: user['avatar']
+          full_name,
+          avatar_url
         },
         app_metadata: {
           provider: "email"

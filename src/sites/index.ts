@@ -134,6 +134,11 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new Error('Could not create user.')
       }
 
+      const maybeUserId = (req as any).accountability?.user
+      if (invitedUser.id === maybeUserId) {
+        throw new InvalidPayloadError({ reason: 'Cannot invite yourself' });
+      }
+
       const site = await sites.readOne(req.params['siteId']);
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });

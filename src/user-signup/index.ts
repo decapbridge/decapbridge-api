@@ -11,6 +11,7 @@ const hook: HookConfig = async ({ filter }, ctx) => {
         _eq: 'User',
       },
     },
+    fields: ['id']
   });
   const adminEmail = ctx.env['ADMIN_EMAIL'];
   const userRoleId = userRole?.['id'];

@@ -11,10 +11,10 @@ const queries: Record<string, Query> = {
     fields: ['id', 'first_name', 'last_name', 'email', 'role'],
     filter: {
       role: {
-        admin_access: {
-          _eq: true,
+        name: {
+          _eq: 'Administrator',
         },
-      },
+      }
     },
   },
   directus_presets: {},

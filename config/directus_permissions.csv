@@ -11,3 +11,4 @@
 15,"sites_directus_users","delete",,,,,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}}]"
 16,"directus_files","create","{}","{}",,"[""*""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc",
 17,"directus_files","read",,,,"[""id""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""uploaded_by"":{""_eq"":""$CURRENT_USER""}}]"
+18,"directus_files","read",,,,"[""*""]","abf8a154-5b1c-4a46-ac9c-7300570f4f17",

@@ -113,7 +113,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
 
     try {
-      const { email, first_name, last_name } = req.body;
+      const { email, first_name, last_name, avatar } = req.body;
       if (!email) {
         throw new InvalidPayloadError({ reason: 'Missing "email" field in body' });
       }
@@ -125,7 +125,8 @@ const endpoint: EndpointConfig = (router, ctx) => {
         await users.createOne({
           email,
           first_name,
-          last_name
+          last_name,
+          avatar,
         });
       }
 
@@ -172,6 +173,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
           email,
           first_name: invitedUser.first_name,
           last_name: invitedUser.last_name,
+          avatar: invitedUser.avatar,
         }
         const queryString = stringify(queryParams)
         inviteUrl = `${project_url}/auth/finalize?${queryString}`

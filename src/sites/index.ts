@@ -1,5 +1,11 @@
 import type { EndpointConfig } from '@directus/extensions';
-import type { UsersService, AuthenticationService, ItemsService, MailService, SettingsService } from '@directus/api/services/index';
+import type {
+  UsersService,
+  AuthenticationService,
+  ItemsService,
+  MailService,
+  SettingsService,
+} from '@directus/api/services/index';
 import { isDirectusError, InvalidPayloadError } from '@directus/errors';
 import { DEFAULT_AUTH_PROVIDER } from '@directus/api/constants';
 import type { User } from '@directus/types';
@@ -12,12 +18,12 @@ const fetchUserByEmail = async (users: UsersService, userEmail: string) => {
   const userData = await users.readByQuery({
     filter: {
       email: {
-        _icontains: userEmail
-      }
-    }
-  })
-  return userData[0] as User | undefined
-}
+        _icontains: userEmail,
+      },
+    },
+  });
+  return userData[0] as User | undefined;
+};
 
 const endpoint: EndpointConfig = (router, ctx) => {
   const public_url = ctx.env['PUBLIC_URL'];
@@ -47,37 +53,37 @@ const endpoint: EndpointConfig = (router, ctx) => {
         app_metadata: {
           repo: site['repo'],
           access_token: site['access_token'],
-        }
+        },
       };
       const result = await auth.login(DEFAULT_AUTH_PROVIDER, payload);
 
       const permissionsTestResponse = await fetch(`${public_url}/items/sites/${site['id']}`, {
         headers: {
-          Authorization: `Bearer ${result.accessToken}`
-        }
+          Authorization: `Bearer ${result.accessToken}`,
+        },
       });
-      const { data } = await permissionsTestResponse.json()
+      const { data } = await permissionsTestResponse.json();
 
       if (!data?.id) {
-        throw new InvalidPayloadError({ reason: 'You don\'t have permission to access this site' });
+        throw new InvalidPayloadError({ reason: "You don't have permission to access this site" });
       }
 
       return res.json({
         token_type: 'bearer',
         access_token: result.accessToken,
         expires_in: result.expires,
-        refresh_token: result.refreshToken
+        refresh_token: result.refreshToken,
       });
     } catch (error) {
       if (isDirectusError(error)) {
         return res.status(error.status).json({
           error: error.code,
-          error_description: error.message
+          error_description: error.message,
         });
       } else {
         return res.status(500).json({
           error: (error as Error).name,
-          error_description: (error as Error).message
+          error_description: (error as Error).message,
         });
       }
     }
@@ -94,10 +100,10 @@ const endpoint: EndpointConfig = (router, ctx) => {
         ...user,
         user_metadata: {
           full_name,
-          avatar_url
+          avatar_url,
         },
         app_metadata: {
-          provider: "email"
+          provider: 'email',
         },
       });
     } else {
@@ -107,7 +113,10 @@ const endpoint: EndpointConfig = (router, ctx) => {
   router.post('/:siteId/invite', async (req, res) => {
     const schema = await ctx.getSchema();
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
-    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema, accountability: (req as any).accountability });
+    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', {
+      schema,
+      accountability: (req as any).accountability,
+    });
     const collaborators = new (ctx.services.ItemsService as typeof ItemsService)('sites_directus_users', { schema });
     const mail = new (ctx.services.MailService as typeof MailService)({ schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
@@ -117,7 +126,6 @@ const endpoint: EndpointConfig = (router, ctx) => {
       if (!email) {
         throw new InvalidPayloadError({ reason: 'Missing "email" field in body' });
       }
-
 
       let invitedUser = await fetchUserByEmail(users, email);
 
@@ -132,10 +140,10 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       invitedUser = await fetchUserByEmail(users, email);
       if (!invitedUser) {
-        throw new Error('Could not create user.')
+        throw new Error('Could not create user.');
       }
 
-      const maybeUserId = (req as any).accountability?.user
+      const maybeUserId = (req as any).accountability?.user;
       if (invitedUser.id === maybeUserId) {
         throw new InvalidPayloadError({ reason: 'Cannot invite yourself' });
       }
@@ -149,7 +157,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         filter: {
           sites_id: { _eq: site['id'] },
           directus_users_id: { _eq: invitedUser['id'] },
-        }
+        },
       });
 
       if (maybeAlreadyInvited) {
@@ -158,7 +166,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       await collaborators.createOne({
         sites_id: site['id'],
-        directus_users_id: invitedUser['id']
+        directus_users_id: invitedUser['id'],
       });
 
       let inviteUrl = site['cms_url'];
@@ -174,9 +182,9 @@ const endpoint: EndpointConfig = (router, ctx) => {
           first_name: invitedUser.first_name,
           last_name: invitedUser.last_name,
           avatar: invitedUser.avatar,
-        }
-        const queryString = stringify(queryParams)
-        inviteUrl = `${project_url}/auth/finalize?${queryString}`
+        };
+        const queryString = stringify(queryParams);
+        inviteUrl = `${project_url}/auth/finalize?${queryString}`;
       }
 
       await mail.send({
@@ -192,19 +200,18 @@ const endpoint: EndpointConfig = (router, ctx) => {
       });
 
       return res.json({
-        success: true
+        success: true,
       });
-
     } catch (error) {
       if (isDirectusError(error)) {
         return res.status(error.status).json({
           error: error.code,
-          error_description: error.message
+          error_description: error.message,
         });
       } else {
         return res.status(500).json({
           error: (error as Error).name,
-          error_description: (error as Error).message
+          error_description: (error as Error).message,
         });
       }
     }

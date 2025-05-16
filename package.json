@@ -38,6 +38,11 @@
         "type": "endpoint",
         "name": "sites",
         "source": "src/sites/index.ts"
+      },
+      {
+        "type": "hook",
+        "name": "encrypt-site-access-tokens",
+        "source": "src/encrypt-site-access-tokens/index.ts"
       }
     ],
     "host": "^10.10.4"

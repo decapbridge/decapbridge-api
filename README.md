@@ -1,3 +1,16 @@
+# DecapBridge auth server
+
+This is the auth backend for DecapBridge. It's a node.js + postgres app built using Directus to scaffold it out.
+
+In short, this is where users are stored, along with their sites and the member assignations. Auth functionality (login, signup, forgot password, etc) is handled here. Invitation emails are sent from here as well.
+
+## Requirements
+
+- Docker
+- node.js
+- postgres
+- a mail server
+
 ## Installation
 
 ```sh
@@ -6,7 +19,7 @@ cd directus-starter
 npm install
 cp .env.example .env
 run config:apply
-run directus users passwd --email hello@decapbridge.com --password password
+run directus users passwd --email admin@email.com --password xxxxxx
 run help
 ```
 
@@ -42,7 +55,3 @@ npm run config:snapshot
 ```
 
 Remember to also update the SDK in the UI via `npm install @directus/sdk@latest`
-
-## Deploy
-
-See [dops](https://github.com/loteoo/dops).

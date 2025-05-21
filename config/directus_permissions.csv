@@ -4,8 +4,8 @@
 6,"directus_users","update",,,,"[""first_name"",""last_name"",""password"",""avatar""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc",
 7,"directus_users","delete",,,,,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc",
 10,"sites","create","{}","{}",,"[""*""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc",
-11,"sites","read",,,,"[""id"",""status"",""sort"",""user_updated"",""date_created"",""user_created"",""date_updated"",""repo"",""access_token"",""collaborators"",""cms_url""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""_or"":[{""user_created"":{""_eq"":""$CURRENT_USER""}},{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""}}}]}]"
-12,"sites","update",,,,"[""repo"",""access_token"",""cms_url"",""collaborators""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""user_created"":{""_eq"":""$CURRENT_USER""}}]"
+11,"sites","read",,,,"[""id"",""status"",""sort"",""user_updated"",""date_created"",""user_created"",""date_updated"",""repo"",""access_token"",""collaborators"",""cms_url"",""git_provider""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""_or"":[{""user_created"":{""_eq"":""$CURRENT_USER""}},{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""}}}]}]"
+12,"sites","update",,,,"[""repo"",""access_token"",""cms_url"",""collaborators"",""git_provider""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""user_created"":{""_eq"":""$CURRENT_USER""}}]"
 13,"sites","delete",,,,,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""user_created"":{""_eq"":""$CURRENT_USER""}}]"
 14,"sites_directus_users","read",,,,"[""id"",""sites_id"",""directus_users_id""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""_or"":[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}},{""sites_id"":{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""}}}}]}]"
 15,"sites_directus_users","delete",,,,,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}}]"

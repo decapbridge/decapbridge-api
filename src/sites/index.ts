@@ -51,6 +51,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         email: body.username,
         password: body.password,
         app_metadata: {
+          git_provider: site['git_provider'],
           repo: site['repo'],
           access_token: site['access_token'],
         },

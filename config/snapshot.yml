@@ -558,6 +558,50 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: sites
+    field: git_provider
+    type: string
+    meta:
+      collection: sites
+      conditions: null
+      display: null
+      display_options: null
+      field: git_provider
+      group: null
+      hidden: false
+      interface: select-radio
+      note: null
+      options:
+        choices:
+          - text: Github
+            value: github
+          - text: Gitlab
+            value: gitlab
+      readonly: false
+      required: true
+      sort: 12
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: git_provider
+      table: sites
+      data_type: character varying
+      default_value: github
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: sites_directus_users
     field: id
     type: integer

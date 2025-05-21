@@ -14,8 +14,8 @@ In short, this is where users are stored, along with their sites and the member 
 ## Installation
 
 ```sh
-git clone git@github.com:loteoo/directus-starter.git
-cd directus-starter
+git clone git@github.com:decapbridge/decapbridge-api.git
+cd decapbridge-api
 npm install
 cp .env.example .env
 run config:apply

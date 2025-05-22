@@ -8,7 +8,7 @@ import type {
 } from '@directus/api/services/index';
 import { isDirectusError, InvalidPayloadError } from '@directus/errors';
 import { DEFAULT_AUTH_PROVIDER } from '@directus/api/constants';
-import type { User } from '@directus/types';
+import type { Item, User } from '@directus/types';
 import { getSecret } from '@directus/api/utils/get-secret';
 import { getSimpleHash } from '@directus/utils';
 import jwt from 'jsonwebtoken';
@@ -63,9 +63,9 @@ const endpoint: EndpointConfig = (router, ctx) => {
           Authorization: `Bearer ${result.accessToken}`,
         },
       });
-      const { data } = await permissionsTestResponse.json();
+      const { data } = await permissionsTestResponse.json() as { data?: Item };
 
-      if (!data?.id) {
+      if (!data?.['id']) {
         throw new InvalidPayloadError({ reason: "You don't have permission to access this site" });
       }
 
@@ -89,6 +89,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
       }
     }
   });
+
   router.get('/:siteId/user', async (req, res) => {
     const schema = await ctx.getSchema();
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
@@ -111,6 +112,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
       return res.status(403).send('Unauthorized');
     }
   });
+
   router.post('/:siteId/invite', async (req, res) => {
     const schema = await ctx.getSchema();
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
@@ -120,7 +122,6 @@ const endpoint: EndpointConfig = (router, ctx) => {
     });
     const collaborators = new (ctx.services.ItemsService as typeof ItemsService)('sites_directus_users', { schema });
     const mail = new (ctx.services.MailService as typeof MailService)({ schema });
-    const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
 
     try {
       const { email, first_name, last_name, avatar } = req.body;
@@ -170,23 +171,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         directus_users_id: invitedUser['id'],
       });
 
-      let inviteUrl = site['cms_url'];
-
-      if (!invitedUser.password) {
-        const payload = { email, scope: 'password-reset', hash: getSimpleHash('null') };
-        const token = jwt.sign(payload, getSecret(), { expiresIn: '30d', issuer: 'directus' });
-        const { project_url } = await settings.readSingleton({});
-        const queryParams = {
-          token,
-          site_id: site['id'],
-          email,
-          first_name: invitedUser.first_name,
-          last_name: invitedUser.last_name,
-          avatar: invitedUser.avatar,
-        };
-        const queryString = stringify(queryParams);
-        inviteUrl = `${project_url}/auth/finalize?${queryString}`;
-      }
+      const joinUrl = `${public_url}/sites/${site['id']}/join/${invitedUser['id']}`;
 
       await mail.send({
         to: invitedUser['email'],
@@ -195,7 +180,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
           name: 'user-invitation',
           data: {
             projectName: site['repo'],
-            url: inviteUrl,
+            url: joinUrl,
           },
         },
       });
@@ -216,6 +201,46 @@ const endpoint: EndpointConfig = (router, ctx) => {
         });
       }
     }
+  });
+
+  router.get('/:siteId/join/:userId', async (req, res) => {
+    const schema = await ctx.getSchema();
+    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', {
+      schema,
+      accountability: (req as any).accountability,
+    });
+    const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
+    const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
+
+    const site = await sites.readOne(req.params['siteId']);
+    if (!site) {
+      throw new InvalidPayloadError({ reason: 'Site does not exist' });
+    }
+
+    const user = await users.readOne(req.params['userId']) as User | undefined;
+    if (!user) {
+      throw new InvalidPayloadError({ reason: 'User does not exist' });
+    }
+
+    let redirectUrl = site['cms_url'];
+
+    if (!user.password) {
+      const payload = { email: user.email, scope: 'password-reset', hash: getSimpleHash('null') };
+      const token = jwt.sign(payload, getSecret(), { expiresIn: '30d', issuer: 'directus' });
+      const { project_url } = await settings.readSingleton({});
+      const queryParams = {
+        token,
+        site_id: site['id'],
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        avatar: user.avatar,
+      };
+      const queryString = stringify(queryParams);
+      redirectUrl = `${project_url}/auth/finalize?${queryString}`;
+    }
+
+    return res.redirect(redirectUrl);
   });
 };
 

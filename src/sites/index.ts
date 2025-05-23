@@ -171,7 +171,14 @@ const endpoint: EndpointConfig = (router, ctx) => {
         directus_users_id: invitedUser['id'],
       });
 
-      const joinUrl = `${public_url}/sites/${site['id']}/join/${invitedUser['id']}`;
+      const payload = { email: invitedUser.email, scope: 'password-reset', hash: getSimpleHash('null') };
+      const token = jwt.sign(payload, getSecret(), { expiresIn: '30d', issuer: 'directus' });
+      const queryParams = {
+        user_id: invitedUser['id'],
+        token,
+      };
+      const queryString = stringify(queryParams);
+      const joinUrl = `${public_url}/sites/${site['id']}/join?${queryString}`;
 
       await mail.send({
         to: invitedUser['email'],
@@ -203,44 +210,63 @@ const endpoint: EndpointConfig = (router, ctx) => {
     }
   });
 
-  router.get('/:siteId/join/:userId', async (req, res) => {
+  router.get('/:siteId/join', async (req, res) => {
     const schema = await ctx.getSchema();
-    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', {
-      schema,
-      accountability: (req as any).accountability,
-    });
+    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
 
-    const site = await sites.readOne(req.params['siteId']);
-    if (!site) {
-      throw new InvalidPayloadError({ reason: 'Site does not exist' });
+
+    try {
+      const site = await sites.readOne(req.params['siteId']);
+      if (!site) {
+        throw new InvalidPayloadError({ reason: 'Site does not exist' });
+      }
+
+      const userId = req.query['user_id'];
+      if (typeof userId !== 'string') {
+        throw new InvalidPayloadError({ reason: 'userId query parameter is missing or invalid' });
+      }
+      const token = req.query['token'];
+      if (typeof token !== 'string') {
+        throw new InvalidPayloadError({ reason: 'token query parameter is missing or invalid' });
+      }
+
+      const user = await users.readOne(userId) as User | undefined;
+      if (!user) {
+        throw new InvalidPayloadError({ reason: 'User does not exist' });
+      }
+
+      let redirectUrl = site['cms_url'];
+
+      if (!user.password) {
+        const { project_url } = await settings.readSingleton({});
+        const queryParams = {
+          token,
+          site_id: site['id'],
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          avatar: user.avatar,
+        };
+        const queryString = stringify(queryParams);
+        redirectUrl = `${project_url}/auth/finalize?${queryString}`;
+      }
+
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      if (isDirectusError(error)) {
+        return res.status(error.status).json({
+          error: error.code,
+          error_description: error.message,
+        });
+      } else {
+        return res.status(500).json({
+          error: (error as Error).name,
+          error_description: (error as Error).message,
+        });
+      }
     }
-
-    const user = await users.readOne(req.params['userId']) as User | undefined;
-    if (!user) {
-      throw new InvalidPayloadError({ reason: 'User does not exist' });
-    }
-
-    let redirectUrl = site['cms_url'];
-
-    if (!user.password) {
-      const payload = { email: user.email, scope: 'password-reset', hash: getSimpleHash('null') };
-      const token = jwt.sign(payload, getSecret(), { expiresIn: '30d', issuer: 'directus' });
-      const { project_url } = await settings.readSingleton({});
-      const queryParams = {
-        token,
-        site_id: site['id'],
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        avatar: user.avatar,
-      };
-      const queryString = stringify(queryParams);
-      redirectUrl = `${project_url}/auth/finalize?${queryString}`;
-    }
-
-    return res.redirect(redirectUrl);
   });
 };
 

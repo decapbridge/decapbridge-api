@@ -13,3 +13,4 @@
 17,"directus_files","read",,,,"[""id""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""uploaded_by"":{""_eq"":""$CURRENT_USER""}}]"
 18,"directus_files","read",,,,"[""*""]","abf8a154-5b1c-4a46-ac9c-7300570f4f17",
 19,"directus_activity","read",,,,"[""*""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""user"":{""_eq"":""$CURRENT_USER""}}]"
+20,"directus_translations","read",,,,"[""*""]","abf8a154-5b1c-4a46-ac9c-7300570f4f17",

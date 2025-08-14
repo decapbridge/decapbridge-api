@@ -47,6 +47,8 @@ npm run config:snapshot
 
 #### Upgrade Directus version
 
+First check you're using the right node version
+
 ```sh
 npm update
 npm install directus@latest

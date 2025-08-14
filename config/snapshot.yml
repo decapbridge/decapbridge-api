@@ -1,5 +1,5 @@
 version: 1
-directus: 11.7.2
+directus: 11.10.2
 vendor: postgres
 collections:
   - collection: sites
@@ -149,7 +149,7 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: true
+      hidden: false
       interface: input
       note: null
       options: null
@@ -299,7 +299,7 @@ fields:
       note: null
       options:
         template: '{{avatar.$thumbnail}} {{first_name}} {{last_name}}'
-      readonly: true
+      readonly: false
       required: false
       sort: 4
       special:

@@ -14,7 +14,7 @@ dev__extensions() {
 }
 dev__package() {
   __waitfor extensions/custom-extensions/dist/api.js
-  build__jwt_payload_hack
+  build__jwt_auth_mods
   build__package
 }
 dev__directus() {
@@ -28,7 +28,7 @@ dev__directus() {
 build() {
   build__extensions
   build__package
-  build__jwt_payload_hack
+  build__jwt_auth_mods
 }
 build__extensions() {
   extension build
@@ -36,19 +36,13 @@ build__extensions() {
 build__package() {
   sed 's/extensions\/custom-extensions\/dist/dist/g' package.json > extensions/custom-extensions/package.json
 }
-build__jwt_payload_hack() {
+build__jwt_auth_mods() {
   auth_file="./node_modules/@directus/api/dist/services/authentication.js"
-  if ! grep -q "payload\.app_metadata" "$auth_file"; then
-    auth_file_contents="$(cat "$auth_file")"
-    echo "$auth_file_contents" \
-      | awk 'BEGIN {found=0} 
-        /const tokenPayload = {/ && !found { 
-            print $0, "app_metadata: payload.app_metadata,"; 
-            found=1; 
-            next 
-        }
-        1' \
-      > "$auth_file"
+  if ! grep -q "options?\.app_metadata" "$auth_file"; then
+    sed -i '' '/tokenPayload = {/s/$/ ...options?.claims, app_metadata: options?.app_metadata,/' "$auth_file"
+  fi
+  if ! grep -q "&& false" "$auth_file"; then
+    sed -i '' 's/!== providerName/!== providerName \&\& false/' "$auth_file"
   fi
 }
 

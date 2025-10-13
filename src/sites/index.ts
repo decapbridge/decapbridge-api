@@ -236,6 +236,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
     });
     const collaborators = new (ctx.services.ItemsService as typeof ItemsService)('sites_directus_users', { schema });
     const mail = new (ctx.services.MailService as typeof MailService)({ schema });
+    const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
 
     try {
       const { email, first_name, last_name, avatar } = req.body;
@@ -294,14 +295,20 @@ const endpoint: EndpointConfig = (router, ctx) => {
       const queryString = stringify(queryParams);
       const joinUrl = `${public_url}/sites/${site['id']}/join?${queryString}`;
 
+      const { project_url } = await settings.readSingleton({});
+      const forgotPassword = `${project_url}/auth/password/forgot?email=${encodeURIComponent(invitedUser['email']!)}`;
+      const siteName = site['repo'].split('/')[1];
+
+
       await mail.send({
         to: invitedUser['email']!,
-        subject: `You've been invited to contribute to the ${site['repo']} site.`,
+        subject: `You've been invited to ${siteName}`,
         template: {
-          name: 'user-invitation',
+          name: 'site-invitation',
           data: {
-            projectName: site['repo'],
+            projectName: siteName,
             url: joinUrl,
+            forgotPassword,
           },
         },
       });

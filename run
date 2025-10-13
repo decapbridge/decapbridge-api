@@ -20,6 +20,7 @@ dev__package() {
 dev__directus() {
   __waitfor extensions/custom-extensions/package.json
   export SOURCE_COMMIT="$(git rev-parse HEAD)"
+  export TZ="America/New_York"
   directus start
 }
 

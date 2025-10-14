@@ -654,7 +654,12 @@ fields:
       hidden: false
       interface: select-radio
       note: null
-      options: null
+      options:
+        choices:
+          - text: Classic
+            value: classic
+          - text: PKCE
+            value: pkce
       readonly: false
       required: true
       sort: 13

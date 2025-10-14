@@ -20,7 +20,7 @@ const fetchUserByEmail = async (users: UsersService, userEmail: string) => {
   const userData = await users.readByQuery({
     filter: {
       email: {
-        _icontains: userEmail,
+        _eq: userEmail.toLowerCase(),
       },
     },
   });
@@ -248,7 +248,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       if (!invitedUser) {
         await users.createOne({
-          email,
+          email: email.toLowerCase(),
           first_name,
           last_name,
           avatar,

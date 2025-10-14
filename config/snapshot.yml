@@ -641,6 +641,45 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: sites
+    field: auth_type
+    type: string
+    meta:
+      collection: sites
+      conditions: null
+      display: null
+      display_options: null
+      field: auth_type
+      group: null
+      hidden: false
+      interface: select-radio
+      note: null
+      options: null
+      readonly: false
+      required: true
+      sort: 13
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: auth_type
+      table: sites
+      data_type: character varying
+      default_value: classic
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: sites_directus_users
     field: id
     type: integer

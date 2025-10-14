@@ -6,10 +6,12 @@ import type {
   MailService,
   SettingsService,
 } from '@directus/api/services/index';
-import { isDirectusError, InvalidPayloadError } from '@directus/errors';
+import { isDirectusError, InvalidPayloadError, InvalidTokenError, InvalidCredentialsError } from '@directus/errors';
 import { DEFAULT_AUTH_PROVIDER } from '@directus/api/constants';
-import type { Item, User } from '@directus/types';
+import type { Item, LoginResult, User } from '@directus/types';
 import { getSecret } from '@directus/api/utils/get-secret';
+import { verifyAccessJWT } from '@directus/api/utils/jwt';
+import isDirectusJWT from '@directus/api/utils/is-directus-jwt';
 import { getSimpleHash } from '@directus/utils';
 import jwt from 'jsonwebtoken';
 import { parse, stringify } from 'qs';
@@ -37,9 +39,130 @@ const endpoint: EndpointConfig = (router, ctx) => {
     try {
       const body: any = parse(String(req.read()));
 
-      const user = await fetchUserByEmail(users, body.username);
-      if (!user || !user.role) {
-        throw new InvalidPayloadError({ reason: 'User does not exist' });
+      const site = await sites.readOne(req.params['siteId']);
+      if (!site) {
+        throw new InvalidPayloadError({ reason: 'Site does not exist' });
+      }
+
+      let user: User;
+      if (body.code) {
+        const record = await ctx.database.select('user').from('directus_sessions').where('token', body.code).first();
+        if (!record?.user) {
+          throw new InvalidCredentialsError();
+        }
+        user = (await users.readOne(record.user)) as User;
+      } else if (body.username && body.password) {
+        const [maybeUser] = (await users.readByQuery({
+          filter: {
+            email: {
+              _eq: body.username,
+            },
+          },
+        })) as User[];
+        if (!maybeUser) {
+          throw new InvalidPayloadError({ reason: 'User does not exist' });
+        }
+        user = maybeUser;
+      } else {
+        throw new InvalidPayloadError({ reason: 'Missing "username", "password" or "code" field.' });
+      }
+
+      const full_name = user['first_name'] ? `${user['first_name']} ${user['last_name']}` : undefined;
+      const avatar_url = user['avatar'] ? `${public_url}/assets/${user['avatar']}?key=system-medium-cover` : undefined;
+      const userData = {
+        email: user['email'],
+        first_name: user['first_name'],
+        last_name: user['last_name'],
+        full_name: full_name,
+        avatar_url: avatar_url,
+      };
+
+      const loginOptions = {
+        claims: userData,
+        app_metadata: {
+          git_provider: site['git_provider'],
+          repo: site['repo'],
+          access_token: site['access_token'],
+        },
+      } as any;
+
+      let loginResult: LoginResult;
+      if (body.code) {
+        loginResult = await auth.refresh(body.code, loginOptions);
+      } else if (body.username && body.password) {
+        loginResult = await auth.login(
+          DEFAULT_AUTH_PROVIDER,
+          { email: body.username, password: body.password },
+          loginOptions
+        );
+      } else {
+        throw new InvalidPayloadError({ reason: 'Missing "username", "password" or "code" field.' });
+      }
+
+      const permissionsTestResponse = await fetch(`${public_url}/items/sites/${site['id']}`, {
+        headers: {
+          Authorization: `Bearer ${loginResult.accessToken}`,
+        },
+      });
+      const { data } = (await permissionsTestResponse.json()) as { data?: Item };
+      if (!data?.['id']) {
+        throw new InvalidPayloadError({ reason: "You don't have permission to access this site" });
+      }
+
+      return res.json({
+        ...userData,
+        token_type: 'bearer',
+        access_token: loginResult.accessToken,
+        expires_in: loginResult.expires,
+        refresh_token: loginResult.refreshToken,
+        user_metadata: userData,
+      });
+    } catch (error) {
+      if (isDirectusError(error)) {
+        return res.status(error.status).json({
+          error: error.code,
+          error_description: error.message,
+        });
+      } else {
+        return res.status(500).json({
+          error: (error as Error).name,
+          error_description: (error as Error).message,
+        });
+      }
+    }
+  });
+
+  router.get('/:siteId/pkce', async (req, res) => {
+    const schema = await ctx.getSchema();
+    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
+    const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
+
+    const site = await sites.readOne(req.params['siteId']);
+    if (!site) {
+      throw new InvalidPayloadError({ reason: 'Site does not exist' });
+    }
+
+    const site_name = site['repo'].split('/')[1];
+
+    const { project_url } = await settings.readSingleton({});
+
+    return res.redirect(
+      `${project_url}/auth/login?site_id=${req.params.siteId}&site_name=${site_name}&state=${encodeURIComponent(
+        String(req.query['state'])
+      )}&redirect_uri=${req.query['redirect_uri']}`
+    );
+  });
+
+  router.get('/:siteId/sso-callback', async (req, res) => {
+    const schema = await ctx.getSchema();
+    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
+    const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
+
+    try {
+      const { project_url } = await settings.readSingleton({});
+      if (req.query['reason']) {
+        // TODO there's missing params in the URL here...
+        return res.redirect(`${project_url}/auth/login?error=${req.query['reason']}`);
       }
 
       const site = await sites.readOne(req.params['siteId']);
@@ -47,34 +170,24 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
 
-      const payload = {
-        email: body.username,
-        password: body.password,
-        app_metadata: {
-          git_provider: site['git_provider'],
-          repo: site['repo'],
-          access_token: site['access_token'],
-        },
-      };
-      const result = await auth.login(DEFAULT_AUTH_PROVIDER, payload);
-
-      const permissionsTestResponse = await fetch(`${public_url}/items/sites/${site['id']}`, {
-        headers: {
-          Authorization: `Bearer ${result.accessToken}`,
-        },
-      });
-      const { data } = await permissionsTestResponse.json() as { data?: Item };
-
-      if (!data?.['id']) {
-        throw new InvalidPayloadError({ reason: "You don't have permission to access this site" });
+      if (!req.query['state']) {
+        throw new InvalidPayloadError({ reason: 'Missing "state" field in query parameters.' });
       }
 
-      return res.json({
-        token_type: 'bearer',
-        access_token: result.accessToken,
-        expires_in: result.expires,
-        refresh_token: result.refreshToken,
-      });
+      const token = req.cookies[ctx.env['SESSION_COOKIE_NAME'] as string];
+      if (!isDirectusJWT(token)) {
+        throw new InvalidTokenError();
+      }
+      const payload = verifyAccessJWT(token, getSecret());
+      const refreshToken = payload.session;
+      if (!refreshToken) {
+        throw new InvalidTokenError();
+      }
+
+      // Remove the token from the session
+
+      const cmsUrl = `${site['cms_url']}?state=${req.query['state']}&code=${refreshToken}`;
+      return res.clearCookie(ctx.env['SESSION_COOKIE_NAME']).redirect(cmsUrl);
     } catch (error) {
       if (isDirectusError(error)) {
         return res.status(error.status).json({
@@ -101,6 +214,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
       return res.json({
         ...user,
         user_metadata: {
+          ...user,
           full_name,
           avatar_url,
         },
@@ -122,6 +236,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
     });
     const collaborators = new (ctx.services.ItemsService as typeof ItemsService)('sites_directus_users', { schema });
     const mail = new (ctx.services.MailService as typeof MailService)({ schema });
+    const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
 
     try {
       const { email, first_name, last_name, avatar } = req.body;
@@ -180,14 +295,20 @@ const endpoint: EndpointConfig = (router, ctx) => {
       const queryString = stringify(queryParams);
       const joinUrl = `${public_url}/sites/${site['id']}/join?${queryString}`;
 
+      const { project_url } = await settings.readSingleton({});
+      const forgotPassword = `${project_url}/auth/password/forgot?email=${encodeURIComponent(invitedUser['email']!)}`;
+      const siteName = site['repo'].split('/')[1];
+
+
       await mail.send({
-        to: invitedUser['email'],
-        subject: `You've been invited to contribute to the ${site['repo']} site.`,
+        to: invitedUser['email']!,
+        subject: `You've been invited to ${siteName}`,
         template: {
-          name: 'user-invitation',
+          name: 'site-invitation',
           data: {
-            projectName: site['repo'],
+            projectName: siteName,
             url: joinUrl,
+            forgotPassword,
           },
         },
       });
@@ -216,12 +337,13 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
 
-
     try {
       const site = await sites.readOne(req.params['siteId']);
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
+
+      const site_name = site['repo'].split('/')[1];
 
       const userId = req.query['user_id'];
       if (typeof userId !== 'string') {
@@ -232,22 +354,28 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'token query parameter is missing or invalid' });
       }
 
-      const user = await users.readOne(userId) as User | undefined;
+      const user = (await users.readOne(userId)) as User | undefined;
       if (!user) {
         throw new InvalidPayloadError({ reason: 'User does not exist' });
       }
 
       let redirectUrl = site['cms_url'];
 
-      if (!user.password) {
+      const isFirstLogin = user.provider === 'default' && !user.password;
+      const needsToSetPassword = site['auth_type'] === 'classic' && !user.password;
+
+      if (isFirstLogin || needsToSetPassword) {
         const { project_url } = await settings.readSingleton({});
         const queryParams = {
           token,
           site_id: site['id'],
+          site_name: site_name,
+          redirect_uri: redirectUrl,
           email: user.email,
           first_name: user.first_name,
           last_name: user.last_name,
           avatar: user.avatar,
+          auth_type: site['auth_type'],
         };
         const queryString = stringify(queryParams);
         redirectUrl = `${project_url}/auth/finalize?${queryString}`;

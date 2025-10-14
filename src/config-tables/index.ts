@@ -19,7 +19,7 @@ const queries: Record<string, Query> = {
   },
   directus_presets: {},
   directus_settings: {
-    fields: ['id', 'project_name', 'project_url', 'project_color']
+    fields: ['id', 'project_name', 'project_color']
   },
 };
 

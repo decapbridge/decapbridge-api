@@ -43,6 +43,11 @@
         "type": "hook",
         "name": "encrypt-site-access-tokens",
         "source": "src/encrypt-site-access-tokens/index.ts"
+      },
+      {
+        "type": "endpoint",
+        "name": "sso-exchange-token",
+        "source": "src/sso-exchange-token/index.ts"
       }
     ],
     "host": "^10.10.4"

@@ -1,0 +1,48 @@
+{% layout "base" %} {% block content %}
+
+<h1 style="font-size: 24px;">You've been invited to contribute to the {{ projectName }} site.</h1>
+
+<p style="padding-bottom: 20px">
+  Click the button below to accept this invitation, log into the Content Management System and start collaborating:
+</p>
+
+<a
+  class="button"
+  rel="noopener"
+  target="_blank"
+  href="{{url}}"
+  style="
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    text-decoration: none;
+    display: inline-block;
+    padding: 11px 24px;
+    border-radius: 8px;
+    background: #171717;
+    border: 1px solid #ffffff;
+  "
+>
+  <!--[if mso]>
+    <i style="letter-spacing: 25px; mso-font-width: -100%; mso-text-raise: 30pt"
+      >&nbsp;</i
+    >
+  <![endif]-->
+  <span style="mso-text-raise: 15pt">Join {{ projectName }}</span>
+  <!--[if mso]>
+    <i style="letter-spacing: 25px; mso-font-width: -100%">&nbsp;</i>
+  <![endif]-->
+</a>
+
+<p
+  style="
+    margin: 20px 0 10px 0;
+    font-size: 13px;
+    line-height: 16px;
+    color: #171717;
+  "
+>
+  Forgot your password? <a rel="noopener" target="_blank" href="{{forgotPassword}}">Click here to set a new password</a>.
+</p>
+
+{% endblock %}

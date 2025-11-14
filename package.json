@@ -21,18 +21,8 @@
       },
       {
         "type": "hook",
-        "name": "signup-notification",
-        "source": "src/signup-notification/index.ts"
-      },
-      {
-        "type": "hook",
         "name": "user-signup",
         "source": "src/user-signup/index.ts"
-      },
-      {
-        "type": "endpoint",
-        "name": "contact-form",
-        "source": "src/contact-form/index.ts"
       },
       {
         "type": "endpoint",

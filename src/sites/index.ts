@@ -27,6 +27,18 @@ const fetchUserByEmail = async (users: UsersService, userEmail: string) => {
   return userData[0] as User | undefined;
 };
 
+const testSitePermissions = async (public_url: string, siteId: string, token: string) => {
+  const permissionsTestResponse = await fetch(`${public_url}/items/sites/${siteId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const { data } = (await permissionsTestResponse.json()) as { data?: Item };
+  if (!data?.['id']) {
+    throw new InvalidPayloadError({ reason: "You don't have permission to access this site" });
+  }
+}
+
 const endpoint: EndpointConfig = (router, ctx) => {
   const public_url = ctx.env['PUBLIC_URL'];
 
@@ -99,15 +111,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Missing "username", "password" or "code" field.' });
       }
 
-      const permissionsTestResponse = await fetch(`${public_url}/items/sites/${site['id']}`, {
-        headers: {
-          Authorization: `Bearer ${loginResult.accessToken}`,
-        },
-      });
-      const { data } = (await permissionsTestResponse.json()) as { data?: Item };
-      if (!data?.['id']) {
-        throw new InvalidPayloadError({ reason: "You don't have permission to access this site" });
-      }
+      await testSitePermissions(public_url, site['id'], loginResult.accessToken);
 
       return res.json({
         ...userData,
@@ -123,12 +127,11 @@ const endpoint: EndpointConfig = (router, ctx) => {
           error: error.code,
           error_description: error.message,
         });
-      } else {
-        return res.status(500).json({
-          error: (error as Error).name,
-          error_description: (error as Error).message,
-        });
       }
+      return res.status(500).json({
+        error: (error as Error).name,
+        error_description: (error as Error).message,
+      });
     }
   });
 
@@ -157,9 +160,9 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const schema = await ctx.getSchema();
     const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
+    const { project_url } = await settings.readSingleton({});
 
     try {
-      const { project_url } = await settings.readSingleton({});
       if (req.query['reason']) {
         // TODO there's missing params in the URL here...
         return res.redirect(`${project_url}/auth/login?error=${req.query['reason']}`);
@@ -174,32 +177,33 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Missing "state" field in query parameters.' });
       }
 
-      const token = req.cookies[ctx.env['SESSION_COOKIE_NAME'] as string];
-      if (!isDirectusJWT(token)) {
-        throw new InvalidTokenError();
-      }
-      const payload = verifyAccessJWT(token, getSecret());
-      const refreshToken = payload.session;
-      if (!refreshToken) {
-        throw new InvalidTokenError();
-      }
+      try {
+        const token = req.cookies[ctx.env['SESSION_COOKIE_NAME'] as string];
 
-      // Remove the token from the session
+        await testSitePermissions(public_url, site['id'], token);
 
-      const cmsUrl = `${site['cms_url']}?state=${req.query['state']}&code=${refreshToken}`;
-      return res.clearCookie(ctx.env['SESSION_COOKIE_NAME']).redirect(cmsUrl);
+        // Exchange cookie for jwt
+        if (!isDirectusJWT(token)) {
+          throw new InvalidTokenError();
+        }
+        const payload = verifyAccessJWT(token, getSecret());
+        const refreshToken = payload.session;
+        if (!refreshToken) {
+          throw new InvalidTokenError();
+        }
+
+        // TODO: Remove the token from the session?
+
+        const cmsUrl = `${site['cms_url']}?state=${req.query['state']}&code=${refreshToken}`;
+        return res.clearCookie(ctx.env['SESSION_COOKIE_NAME']).redirect(cmsUrl);
+      } catch (error) {
+
+        const [errMsg, errDesc] = (error as Error).message.split('.');
+
+        return res.redirect(`${site['cms_url']}?state=${req.query['state']}&error=${encodeURIComponent(errMsg ?? '')}&error_description=${encodeURIComponent(errDesc ?? '')}`);
+      }
     } catch (error) {
-      if (isDirectusError(error)) {
-        return res.status(error.status).json({
-          error: error.code,
-          error_description: error.message,
-        });
-      } else {
-        return res.status(500).json({
-          error: (error as Error).name,
-          error_description: (error as Error).message,
-        });
-      }
+      return res.redirect(`${project_url}/auth/login?error=${(error as Error).message}`);
     }
   });
 

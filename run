@@ -79,7 +79,7 @@ extension() {
 
 # Build docker image
 docker_build() {
-  docker build \
+  $DOCKER build \
     -t "$dirname" \
     .
 }
@@ -87,7 +87,7 @@ docker_build() {
 
 # Run docker image
 docker_run() {
-  docker run -it --rm \
+  $DOCKER run -it --rm \
     --env-file=.env \
     -e SOURCE_COMMIT="$(git rev-parse HEAD)" \
     -p 80:80 \
@@ -105,6 +105,8 @@ start() {
 # ===============
 dirname="$(basename "$(pwd)")"
 tab=$(printf '\t')
+
+DOCKER="podman"
 
 __waitfor() {
   until [ -f "$1" ]; do

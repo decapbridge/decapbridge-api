@@ -139,21 +139,26 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const schema = await ctx.getSchema();
     const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
-
-    const site = await sites.readOne(req.params['siteId']);
-    if (!site) {
-      throw new InvalidPayloadError({ reason: 'Site does not exist' });
-    }
-
-    const site_name = site['repo'].split('/')[1];
-
     const { project_url } = await settings.readSingleton({});
 
-    return res.redirect(
-      `${project_url}/auth/login?site_id=${req.params.siteId}&site_name=${site_name}&state=${encodeURIComponent(
-        String(req.query['state'])
-      )}&redirect_uri=${req.query['redirect_uri']}`
-    );
+    try {
+      const site = await sites.readOne(req.params['siteId']);
+      if (!site) {
+        throw new InvalidPayloadError({ reason: 'Site does not exist' });
+      }
+
+      const site_name = site['repo'].split('/')[1];
+
+      return res.redirect(
+        `${project_url}/auth/login?site_id=${req.params.siteId}&site_name=${site_name}&state=${encodeURIComponent(
+          String(req.query['state'])
+        )}&redirect_uri=${req.query['redirect_uri']}`
+      );
+    } catch (error) {
+      return res.redirect(
+        `${project_url}/auth/login?error=${encodeURIComponent((error as Error).message)}`
+      );
+    }
   });
 
   router.get('/:siteId/sso-callback', async (req, res) => {
@@ -211,23 +216,37 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const schema = await ctx.getSchema();
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
     const maybeUserId = (req as any).accountability?.user;
-    if (maybeUserId) {
-      const user = await users.readOne(maybeUserId);
-      const full_name = user['first_name'] ? `${user['first_name']} ${user['last_name']}` : undefined;
-      const avatar_url = user['avatar'] ? `${public_url}/assets/${user['avatar']}?key=system-medium-cover` : undefined;
-      return res.json({
-        ...user,
-        user_metadata: {
+    try {
+      if (maybeUserId) {
+        const user = await users.readOne(maybeUserId);
+        const full_name = user['first_name'] ? `${user['first_name']} ${user['last_name']}` : undefined;
+        const avatar_url = user['avatar'] ? `${public_url}/assets/${user['avatar']}?key=system-medium-cover` : undefined;
+        return res.json({
           ...user,
-          full_name,
-          avatar_url,
-        },
-        app_metadata: {
-          provider: 'email',
-        },
-      });
-    } else {
-      return res.status(403).send('Unauthorized');
+          user_metadata: {
+            ...user,
+            full_name,
+            avatar_url,
+          },
+          app_metadata: {
+            provider: 'email',
+          },
+        });
+      } else {
+        return res.status(403).send('Unauthorized');
+      }
+    } catch (error) {
+      if (isDirectusError(error)) {
+        return res.status(error.status).json({
+          error: error.code,
+          error_description: error.message,
+        });
+      } else {
+        return res.status(500).json({
+          error: (error as Error).name,
+          error_description: (error as Error).message,
+        });
+      }
     }
   });
 

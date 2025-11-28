@@ -896,7 +896,7 @@ relations:
       foreign_key_column: id
       constraint_name: sites_directus_users_directus_users_id_foreign
       on_update: NO ACTION
-      on_delete: SET NULL
+      on_delete: CASCADE
   - collection: sites_directus_users
     field: sites_id
     related_collection: sites
@@ -917,4 +917,4 @@ relations:
       foreign_key_column: id
       constraint_name: sites_directus_users_sites_id_foreign
       on_update: NO ACTION
-      on_delete: SET NULL
+      on_delete: CASCADE

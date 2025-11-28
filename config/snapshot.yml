@@ -1,5 +1,5 @@
 version: 1
-directus: 11.10.2
+directus: 11.13.4
 vendor: postgres
 collections:
   - collection: sites
@@ -70,6 +70,7 @@ fields:
         template: '{{sites_id.repo}}'
       readonly: false
       required: false
+      searchable: true
       sort: 1
       special:
         - o2m
@@ -93,6 +94,7 @@ fields:
       options: null
       readonly: false
       required: false
+      searchable: true
       sort: 2
       special:
         - o2m
@@ -116,6 +118,7 @@ fields:
       options: {}
       readonly: false
       required: true
+      searchable: true
       sort: 3
       special: null
       translations: null
@@ -155,6 +158,7 @@ fields:
       options: null
       readonly: true
       required: false
+      searchable: true
       sort: 1
       special:
         - uuid
@@ -222,6 +226,7 @@ fields:
             value: archived
       readonly: false
       required: false
+      searchable: true
       sort: 2
       special: null
       translations: null
@@ -261,6 +266,7 @@ fields:
       options: null
       readonly: false
       required: false
+      searchable: true
       sort: 3
       special: null
       translations: null
@@ -301,6 +307,7 @@ fields:
         template: '{{avatar.$thumbnail}} {{first_name}} {{last_name}}'
       readonly: false
       required: false
+      searchable: true
       sort: 4
       special:
         - user-created
@@ -342,6 +349,7 @@ fields:
       options: null
       readonly: true
       required: false
+      searchable: true
       sort: 5
       special:
         - cast-timestamp
@@ -384,6 +392,7 @@ fields:
         template: '{{avatar.$thumbnail}} {{first_name}} {{last_name}}'
       readonly: true
       required: false
+      searchable: true
       sort: 6
       special:
         - user-updated
@@ -425,6 +434,7 @@ fields:
       options: null
       readonly: true
       required: false
+      searchable: true
       sort: 7
       special:
         - cast-timestamp
@@ -468,6 +478,7 @@ fields:
         masked: true
       readonly: false
       required: true
+      searchable: true
       sort: 9
       special: null
       translations: null
@@ -508,6 +519,7 @@ fields:
         trim: true
       readonly: false
       required: true
+      searchable: true
       sort: 8
       special: null
       translations: null
@@ -550,6 +562,7 @@ fields:
         template: '{{directus_users_id.email}}'
       readonly: false
       required: false
+      searchable: true
       sort: 11
       special:
         - m2m
@@ -574,6 +587,7 @@ fields:
         iconLeft: link
       readonly: false
       required: true
+      searchable: true
       sort: 10
       special: null
       translations: null
@@ -618,6 +632,7 @@ fields:
             value: gitlab
       readonly: false
       required: true
+      searchable: true
       sort: 12
       special: null
       translations: null
@@ -662,6 +677,7 @@ fields:
             value: pkce
       readonly: false
       required: true
+      searchable: true
       sort: 13
       special: null
       translations: null
@@ -701,6 +717,7 @@ fields:
       options: null
       readonly: false
       required: false
+      searchable: true
       sort: 1
       special: null
       translations: null
@@ -742,6 +759,7 @@ fields:
         template: '{{repo}}'
       readonly: false
       required: false
+      searchable: true
       sort: 2
       special: null
       translations: null
@@ -782,6 +800,7 @@ fields:
         template: '{{email}}'
       readonly: false
       required: false
+      searchable: true
       sort: 3
       special: null
       translations: null
@@ -805,6 +824,15 @@ fields:
       has_auto_increment: false
       foreign_key_table: directus_users
       foreign_key_column: id
+systemFields:
+  - collection: directus_activity
+    field: timestamp
+    schema:
+      is_indexed: true
+  - collection: directus_revisions
+    field: parent
+    schema:
+      is_indexed: true
 relations:
   - collection: sites
     field: user_created

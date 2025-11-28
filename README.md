@@ -42,7 +42,7 @@ The `src` directory is a "multi-extension" package will get compiled into a sing
 When modifying the schema and permissions through the UI, remember to save the changes to git:
 
 ```sh
-npm run config:snapshot
+run config:snapshot
 ```
 
 #### Upgrade Directus version
@@ -53,7 +53,7 @@ First check you're using the right node version
 npm update
 npm install directus@latest
 npm exec directus database migrate:latest
-npm run config:snapshot
+run config:snapshot
 ```
 
 Remember to also update the SDK in the UI via `npm install @directus/sdk@latest`

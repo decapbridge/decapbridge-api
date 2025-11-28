@@ -43,7 +43,7 @@
     "host": "^10.10.4"
   },
   "dependencies": {
-    "directus": "^11.10.2",
+    "directus": "^11.13.4",
     "zod": "^4.0.17"
   },
   "devDependencies": {

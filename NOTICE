@@ -1,0 +1,6 @@
+DecapBridge API
+Copyright 2026 Alexandre Lotte
+
+This software installs Directus (https://directus.io) as part of its setup
+process. Directus is licensed under the Business Source License 1.1.
+See https://github.com/directus/directus/blob/main/license for details.

@@ -1,6 +1,6 @@
 # DecapBridge auth server
 
-This is the auth backend for DecapBridge. It's a node app built using Directus to scaffold it out. Postgres database.
+This is the auth backend for DecapBridge. It's a node app with a postgres database, built using Directus, as an extensions bundle.
 
 This is where users are stored, along with their sites and the member assignations. Auth functionality (login, signup, forgot password, SSO login, etc) is handled here. Invitation emails are sent from here as well.
 
@@ -10,6 +10,7 @@ This is where users are stored, along with their sites and the member assignatio
 - node.js
 - postgres
 - a mail server
+- SSO credentials
 
 ## Installation
 

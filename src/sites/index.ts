@@ -37,7 +37,7 @@ const testSitePermissions = async (public_url: string, siteId: string, token: st
   if (!data?.['id']) {
     throw new InvalidPayloadError({ reason: "You don't have permission to access this site" });
   }
-}
+};
 
 const endpoint: EndpointConfig = (router, ctx) => {
   const public_url = ctx.env['PUBLIC_URL'];
@@ -105,7 +105,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         loginResult = await auth.login(
           DEFAULT_AUTH_PROVIDER,
           { email: body.username, password: body.password },
-          loginOptions
+          loginOptions,
         );
       } else {
         throw new InvalidPayloadError({ reason: 'Missing "username", "password" or "code" field.' });
@@ -147,17 +147,23 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
 
-      const site_name = site['repo'].split('/')[1];
+      const queryParams: any = {
+        site_id: site['id'],
+        site_name: site['name'] || site['repo'].split('/')[1],
+        state: String(req.query['state']),
+        redirect_uri: req.query['redirect_uri'],
+      };
+      if (site['logo']) {
+        queryParams['site_logo'] = `${public_url}/assets/${site['logo']}`;
+      }
+      if (site['color']) {
+        queryParams['site_color'] = site['color'];
+      }
 
-      return res.redirect(
-        `${project_url}/auth/login?site_id=${req.params.siteId}&site_name=${site_name}&state=${encodeURIComponent(
-          String(req.query['state'])
-        )}&redirect_uri=${req.query['redirect_uri']}`
-      );
+      const queryString = stringify(queryParams);
+      return res.redirect(`${project_url}/auth/login?${queryString}`);
     } catch (error) {
-      return res.redirect(
-        `${project_url}/auth/login?error=${encodeURIComponent((error as Error).message)}`
-      );
+      return res.redirect(`${project_url}/auth/login?error=${encodeURIComponent((error as Error).message)}`);
     }
   });
 
@@ -202,10 +208,11 @@ const endpoint: EndpointConfig = (router, ctx) => {
         const cmsUrl = `${site['cms_url']}?state=${req.query['state']}&code=${refreshToken}`;
         return res.clearCookie(ctx.env['SESSION_COOKIE_NAME']).redirect(cmsUrl);
       } catch (error) {
-
         const [errMsg, errDesc] = (error as Error).message.split('.');
 
-        return res.redirect(`${site['cms_url']}?state=${req.query['state']}&error=${encodeURIComponent(errMsg ?? '')}&error_description=${encodeURIComponent(errDesc ?? '')}`);
+        return res.redirect(
+          `${site['cms_url']}?state=${req.query['state']}&error=${encodeURIComponent(errMsg ?? '')}&error_description=${encodeURIComponent(errDesc ?? '')}`,
+        );
       }
     } catch (error) {
       return res.redirect(`${project_url}/auth/login?error=${(error as Error).message}`);
@@ -220,7 +227,9 @@ const endpoint: EndpointConfig = (router, ctx) => {
       if (maybeUserId) {
         const user = await users.readOne(maybeUserId);
         const full_name = user['first_name'] ? `${user['first_name']} ${user['last_name']}` : undefined;
-        const avatar_url = user['avatar'] ? `${public_url}/assets/${user['avatar']}?key=system-medium-cover` : undefined;
+        const avatar_url = user['avatar']
+          ? `${public_url}/assets/${user['avatar']}?key=system-medium-cover`
+          : undefined;
         return res.json({
           ...user,
           user_metadata: {
@@ -320,19 +329,26 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       const { project_url } = await settings.readSingleton({});
       const forgotPassword = `${project_url}/auth/password/forgot?email=${encodeURIComponent(invitedUser['email']!)}`;
-      const siteName = site['repo'].split('/')[1];
+      const projectName = site['name'] || site['repo'].split('/')[1];
 
+      const mailData: any = {
+        projectName,
+        url: joinUrl,
+        forgotPassword,
+      };
+      if (site['logo']) {
+        mailData['projectLogo'] = `${public_url}/assets/${site['logo']}`;
+      }
+      if (site['color']) {
+        mailData['projectColor'] = site['color'];
+      }
 
       await mail.send({
         to: invitedUser['email']!,
-        subject: `You've been invited to ${siteName}`,
+        subject: `You've been invited to ${projectName}`,
         template: {
           name: 'site-invitation',
-          data: {
-            projectName: siteName,
-            url: joinUrl,
-            forgotPassword,
-          },
+          data: mailData,
         },
       });
 
@@ -365,9 +381,6 @@ const endpoint: EndpointConfig = (router, ctx) => {
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
-
-      const site_name = site['repo'].split('/')[1];
-
       const userId = req.query['user_id'];
       if (typeof userId !== 'string') {
         throw new InvalidPayloadError({ reason: 'userId query parameter is missing or invalid' });
@@ -389,10 +402,10 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       if (isFirstLogin || needsToSetPassword) {
         const { project_url } = await settings.readSingleton({});
-        const queryParams = {
+        const queryParams: any = {
           token,
           site_id: site['id'],
-          site_name: site_name,
+          site_name: site['name'] || site['repo'].split('/')[1],
           redirect_uri: redirectUrl,
           email: user.email,
           first_name: user.first_name,
@@ -400,6 +413,12 @@ const endpoint: EndpointConfig = (router, ctx) => {
           avatar: user.avatar,
           auth_type: site['auth_type'],
         };
+        if (site['logo']) {
+          queryParams['site_logo'] = `${public_url}/assets/${site['logo']}`;
+        }
+        if (site['color']) {
+          queryParams['site_color'] = site['color'];
+        }
         const queryString = stringify(queryParams);
         redirectUrl = `${project_url}/auth/finalize?${queryString}`;
       }

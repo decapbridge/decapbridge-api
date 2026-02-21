@@ -38,12 +38,23 @@
         "type": "endpoint",
         "name": "sso-exchange-token",
         "source": "src/sso-exchange-token/index.ts"
+      },
+      {
+        "type": "hook",
+        "name": "stripe-raw-webhook",
+        "source": "src/stripe/raw-webhook.ts"
+      },
+      {
+        "type": "endpoint",
+        "name": "stripe",
+        "source": "src/stripe/index.ts"
       }
     ],
     "host": "^10.10.4"
   },
   "dependencies": {
     "directus": "^11.13.4",
+    "stripe": "^20.0.0",
     "zod": "^4.0.17"
   },
   "devDependencies": {

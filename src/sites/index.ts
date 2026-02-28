@@ -354,6 +354,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       return res.json({
         success: true,
+        token,
       });
     } catch (error) {
       if (isDirectusError(error)) {

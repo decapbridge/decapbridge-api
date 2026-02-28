@@ -1,8 +1,9 @@
 import type { EndpointConfig } from '@directus/extensions';
-import type { SettingsService, UsersService } from '@directus/api/services/index';
+import type { MailService, SettingsService, UsersService } from '@directus/api/services/index';
 import { isDirectusError, InvalidPayloadError, UnexpectedResponseError, ForbiddenError } from '@directus/errors';
 
 import StripeService from 'stripe';
+import { generateLicenseKey } from '../lib/license.js';
 
 const sleep = (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -231,6 +232,22 @@ const endpoint: EndpointConfig = async (router, ctx) => {
           };
           await users.updateOne(checkedOutUser['id'], checkoutUserData);
           console.log(`Update user ${checkedOutUser['id']}:`, checkoutUserData);
+
+          if (price.lookup_key === 'lifetime') {
+            const mail = new (ctx.services.MailService as typeof MailService)({ schema });
+
+            await mail.send({
+              to: checkedOutUser['email']!,
+              subject: `Your DecapBridge self-hosting key:`,
+              template: {
+                name: 'license-key',
+                data: {
+                  key: generateLicenseKey(checkedOutUser['id'], ctx.env['SECRET']),
+                },
+              },
+            });
+
+          }
 
           break;
 

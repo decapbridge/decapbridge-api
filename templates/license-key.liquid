@@ -1,0 +1,35 @@
+{% layout "base" %} {% block content %}
+
+<h1 style="font-size: 24px;">Thank you for purchasing a DecapBridge license!</h1>
+
+<p style="padding-bottom: 20px">
+  Your support helps keep the project running and ensures a reliable service for the whole community.
+</p>
+
+<p style="padding-bottom: 8px">
+  Here is your license key:
+</p>
+
+<p
+  style="
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #e2e8f0;
+    background: #1a1a1a;
+    border: 1px solid #333333;
+    border-radius: 6px;
+    padding: 14px 20px;
+    word-break: break-all;
+    display: block;
+    margin-bottom: 20px;
+  "
+>{{key}}</p>
+
+<p style="padding-bottom: 20px">
+  You can use it by setting the <code>DECAPBRIDGE_LICENSE_KEY</code> environment variable to this value.
+</p>
+
+
+{% endblock %}

@@ -97,6 +97,9 @@ docker_run() {
 
 # Start production server
 start() {
+  if [ "$PUBLIC_URL" != "https://auth.decapbridge.com" ]; then
+    export SERVE_APP=false
+  fi
   config_apply__bootstrap
   directus start
 }

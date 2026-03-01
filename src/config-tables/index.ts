@@ -6,6 +6,7 @@ import type { ItemsService, ImportService, ExportService } from '@directus/api/s
 // Order matters, could have foreign key issues
 const queries: Record<string, Query> = {
   directus_roles: {},
+  directus_policies: {},
   directus_permissions: {},
   directus_users: {
     fields: ['id', 'first_name', 'last_name', 'email', 'role'],

@@ -5,23 +5,30 @@ import type { ItemsService, ImportService, ExportService } from '@directus/api/s
 
 // Order matters, could have foreign key issues
 const queries: Record<string, Query> = {
-  directus_roles: {},
-  directus_policies: {},
-  directus_permissions: {},
-  directus_users: {
-    fields: ['id', 'first_name', 'last_name', 'email', 'role'],
+  directus_policies: {
+    filter: {
+      name: {
+        _neq: 'Administrator',
+      },
+    },
+  },
+  directus_roles: {
+    filter: {
+      name: {
+        _neq: 'Administrator',
+      },
+    },
+  },
+  directus_access: {
     filter: {
       role: {
         name: {
-          _eq: 'Administrator',
+          _neq: 'Administrator',
         },
-      }
+      },
     },
   },
-  directus_presets: {},
-  directus_settings: {
-    fields: ['id', 'project_name', 'project_color']
-  },
+  directus_permissions: {},
 };
 
 const tables = Object.keys(queries);
@@ -33,7 +40,6 @@ const hook: HookConfig = async ({ init }, ctx) => {
 
     if (command === 'snapshot') {
       ctx.logger.info(`Exporting tables: ${tables.join(', ')}`);
-
       const schema = await ctx.getSchema();
       const exportService = new (ctx.services.ExportService as typeof ExportService)({ schema });
       for (const table of tables) {

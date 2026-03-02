@@ -1,21 +1,25 @@
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createPrivateKey, createPublicKey, sign, verify } from 'crypto';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
-export function generateLicenseKey(userId: string, secret: string): string {
-  const sig = createHmac('sha256', secret).update(userId).digest('base64url');
+export function generateLicenseKey(userId: string, privateKeyPem: string): string {
+  const privateKey = createPrivateKey(privateKeyPem.replace(/\\n/g, '\n'));
+  const sig = sign(null, Buffer.from(userId), privateKey).toString('base64url');
   return `key-${userId}.${sig}`;
 }
 
-export function verifyLicenseKey(key: string, secret: string): string | null {
-  if (!key.startsWith('key-')) return null;
+const PUBLIC_KEY = createPublicKey(
+  readFileSync(resolve(import.meta.dirname, '../../../license.pub'), 'utf-8')
+);
+
+export function verifyLicenseKey(key: string): string {
+  if (!key.startsWith('key-')) throw new Error('Invalid key format');
   const stripped = key.slice(4);
   const dot = stripped.lastIndexOf('.');
-  if (dot === -1) return null;
+  if (dot === -1) throw new Error('Invalid key format');
   const userId = stripped.slice(0, dot);
-  const sig = stripped.slice(dot + 1);
-  const expected = createHmac('sha256', secret).update(userId).digest('base64url');
-  const sigBuf = Buffer.from(sig);
-  const expBuf = Buffer.from(expected);
-  if (sigBuf.length !== expBuf.length) return null;
-  if (!timingSafeEqual(sigBuf, expBuf)) return null;
+  const sig = Buffer.from(stripped.slice(dot + 1), 'base64url');
+  const valid = verify(null, Buffer.from(userId), PUBLIC_KEY, sig);
+  if (!valid) throw new Error('Invalid key');
   return userId;
 }

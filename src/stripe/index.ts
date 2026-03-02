@@ -14,7 +14,6 @@ const endpoint: EndpointConfig = async (router, ctx) => {
   const stripeWhSecret = ctx.env['STRIPE_WEBHOOK_SECRET'];
 
   if (!stripeKey) {
-    console.warn('Missing STRIPE_SECRET_KEY env variable. Stripe endpoints disabled.');
     return;
   }
 
@@ -63,6 +62,7 @@ const endpoint: EndpointConfig = async (router, ctx) => {
           },
         ],
         mode: price?.type === 'one_time' ? 'payment' : 'subscription',
+        allow_promotion_codes: true,
         success_url: `${project_url}/dashboard/sites?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${project_url}/dashboard/billing`,
         metadata: { directus_user_id: user['id'] },
@@ -242,7 +242,7 @@ const endpoint: EndpointConfig = async (router, ctx) => {
               template: {
                 name: 'license-key',
                 data: {
-                  key: generateLicenseKey(checkedOutUser['id'], ctx.env['SECRET']),
+                  key: generateLicenseKey(checkedOutUser['id'], ctx.env['LICENSE_PRIVATE_KEY']),
                 },
               },
             });

@@ -16,6 +16,8 @@ import { getSimpleHash } from '@directus/utils';
 import jwt from 'jsonwebtoken';
 import { parse, stringify } from 'qs';
 
+const FREE_COLLABORATORS_LIMIT = 10;
+
 const fetchUserByEmail = async (users: UsersService, userEmail: string) => {
   const userData = await users.readByQuery({
     filter: {
@@ -311,6 +313,21 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       if (maybeAlreadyInvited) {
         throw new InvalidPayloadError({ reason: 'User was already invited' });
+      }
+
+      // Enforce free account collaborator limit
+      const siteOwner = await users.readOne(site['user_created'], { fields: ['stripe_subscription_status'] });
+      if (siteOwner['stripe_subscription_status'] !== 'active') {
+        const existingCollaborators = await collaborators.readByQuery({
+          filter: { sites_id: { _eq: site['id'] } },
+          aggregate: { count: ['id'] },
+        });
+        const totalUsers = Number(existingCollaborators[0]?.['count']?.['id'] ?? 0) + 1; // +1 for owner
+        if (totalUsers >= FREE_COLLABORATORS_LIMIT) {
+          throw new InvalidPayloadError({
+            reason: `Free accounts are limited to ${FREE_COLLABORATORS_LIMIT} collaborators per site. Please upgrade your plan to invite more collaborators.`,
+          });
+        }
       }
 
       await collaborators.createOne({

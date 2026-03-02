@@ -54,7 +54,7 @@ config_apply() {
   config_apply__bootstrap
 }
 config_apply__bootstrap() {
-  directus bootstrap --skipAdminInit
+  directus bootstrap
   directus schema apply --yes ./config/snapshot.yml
 }
 
@@ -81,6 +81,7 @@ extension() {
 docker_build() {
   $DOCKER build \
     -t "$dirname" \
+    --build-arg "SOURCE_COMMIT=$(git rev-parse HEAD)" \
     .
 }
 
@@ -90,15 +91,25 @@ docker_run() {
   $DOCKER run -it --rm \
     --env-file=.env \
     -e SOURCE_COMMIT="$(git rev-parse HEAD)" \
-    -p 80:80 \
+    -p 8055:80 \
     "$dirname" "$@"
 }
 
 
 # Start production server
 start() {
+  export CORS_ENABLED="true"
+  export CORS_ORIGIN="true"
+  export ADMIN_EMAIL="admin@decapbridge.com"
+  export ADMIN_PASSWORD="$SECRET"
+  export DB_CLIENT="pg"
+  export EXTENSIONS_PATH="./extensions"
+  export STORAGE_LOCATIONS="local"
+  export STORAGE_LOCAL_DRIVER="local"
+  export STORAGE_LOCAL_ROOT="./uploads"
+  export ROOT_REDIRECT="false"
   if [ "$PUBLIC_URL" != "https://auth.decapbridge.com" ]; then
-    export SERVE_APP=false
+    export SERVE_APP="false"
   fi
   config_apply__bootstrap
   directus start
@@ -109,7 +120,7 @@ start() {
 dirname="$(basename "$(pwd)")"
 tab=$(printf '\t')
 
-DOCKER="podman"
+DOCKER="docker"
 
 __waitfor() {
   until [ -f "$1" ]; do

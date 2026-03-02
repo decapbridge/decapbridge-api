@@ -21,6 +21,11 @@
       },
       {
         "type": "hook",
+        "name": "env-settings",
+        "source": "src/env-settings/index.ts"
+      },
+      {
+        "type": "hook",
         "name": "user-signup",
         "source": "src/user-signup/index.ts"
       },
@@ -33,6 +38,11 @@
         "type": "hook",
         "name": "encrypt-site-access-tokens",
         "source": "src/encrypt-site-access-tokens/index.ts"
+      },
+      {
+        "type": "hook",
+        "name": "free-limits",
+        "source": "src/free-limits/index.ts"
       },
       {
         "type": "endpoint",

@@ -330,13 +330,14 @@ const endpoint: EndpointConfig = (router, ctx) => {
         }
       }
 
+      const payload = { email: invitedUser.email, scope: 'password-reset', hash: getSimpleHash('null') };
+      const token = jwt.sign(payload, getSecret(), { expiresIn: '30d', issuer: 'directus' });
+
       await collaborators.createOne({
         sites_id: site['id'],
         directus_users_id: invitedUser['id'],
+        invite_token: token,
       });
-
-      const payload = { email: invitedUser.email, scope: 'password-reset', hash: getSimpleHash('null') };
-      const token = jwt.sign(payload, getSecret(), { expiresIn: '30d', issuer: 'directus' });
       const queryParams = {
         user_id: invitedUser['id'],
         token,
@@ -392,6 +393,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const schema = await ctx.getSchema();
     const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
+    const collaborators = new (ctx.services.ItemsService as typeof ItemsService)('sites_directus_users', { schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
 
     try {
@@ -411,6 +413,17 @@ const endpoint: EndpointConfig = (router, ctx) => {
       const user = (await users.readOne(userId)) as User | undefined;
       if (!user) {
         throw new InvalidPayloadError({ reason: 'User does not exist' });
+      }
+
+      // Clear the invite token now that it's been used
+      const [collaboratorRecord] = await collaborators.readByQuery({
+        filter: {
+          sites_id: { _eq: site['id'] },
+          directus_users_id: { _eq: userId },
+        },
+      });
+      if (collaboratorRecord) {
+        await collaborators.updateOne(collaboratorRecord['id'], { invite_token: null });
       }
 
       let redirectUrl = site['cms_url'];

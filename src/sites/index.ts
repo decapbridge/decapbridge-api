@@ -18,15 +18,21 @@ import { parse, stringify } from 'qs';
 
 const FREE_COLLABORATORS_LIMIT = 10;
 
-const fetchUserByEmail = async (users: UsersService, userEmail: string) => {
-  const userData = await users.readByQuery({
+const fetchUserByEmail = async (users: UsersService, userEmail: string): Promise<User | undefined> => {
+  const [foundUser] = await users.readByQuery({
     filter: {
       email: {
-        _eq: userEmail.toLowerCase(),
+        _icontains: userEmail // Directus doesn't have _ieq
       },
     },
   });
-  return userData[0] as User | undefined;
+  if (!foundUser) {
+    return
+  }
+  if ((foundUser as User).email?.toLowerCase() !== userEmail.toLowerCase()) { // Double check icontains didn't match someone else
+    return
+  }
+  return foundUser as User;
 };
 
 const testSitePermissions = async (public_url: string, siteId: string, token: string) => {

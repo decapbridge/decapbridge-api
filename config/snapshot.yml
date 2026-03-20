@@ -992,7 +992,7 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: true
+      hidden: false
       interface: null
       note: null
       options: null
@@ -1033,7 +1033,7 @@ fields:
         template: '{{repo}}'
       field: sites_id
       group: null
-      hidden: true
+      hidden: false
       interface: select-dropdown-m2o
       note: null
       options:
@@ -1055,7 +1055,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -1074,7 +1074,7 @@ fields:
       display_options: null
       field: directus_users_id
       group: null
-      hidden: true
+      hidden: false
       interface: select-dropdown-m2o
       note: null
       options:
@@ -1096,7 +1096,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false

@@ -1107,7 +1107,7 @@ fields:
       foreign_key_column: id
   - collection: sites_directus_users
     field: invite_token
-    type: string
+    type: text
     meta:
       collection: sites_directus_users
       conditions: null
@@ -1131,9 +1131,9 @@ fields:
     schema:
       name: invite_token
       table: sites_directus_users
-      data_type: character varying
+      data_type: text
       default_value: null
-      max_length: 255
+      max_length: null
       numeric_precision: null
       numeric_scale: null
       is_nullable: true

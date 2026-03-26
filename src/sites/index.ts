@@ -367,18 +367,29 @@ const endpoint: EndpointConfig = (router, ctx) => {
         mailData['projectColor'] = site['color'];
       }
 
-      await mail.send({
-        to: invitedUser['email']!,
-        subject: `You've been invited to ${projectName}`,
-        template: {
-          name: 'site-invitation',
-          data: mailData,
-        },
-      });
+      let emailSent = false;
+      if (ctx.env['EMAIL_FROM']) {
+        try {
+          await mail.send({
+            to: invitedUser['email']!,
+            subject: `You've been invited to ${projectName}`,
+            template: {
+              name: 'site-invitation',
+              data: mailData,
+            },
+          });
+          emailSent = true;
+        } catch (err) {
+          ctx.logger.warn(`Failed to send invitation email to ${invitedUser['email']}: ${(err as Error).message}`);
+        }
+      } else {
+        ctx.logger.debug('Email not configured (EMAIL_FROM not set), skipping invitation email');
+      }
 
       return res.json({
         success: true,
         token,
+        emailSent,
       });
     } catch (error) {
       if (isDirectusError(error)) {

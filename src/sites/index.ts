@@ -19,20 +19,18 @@ import { parse, stringify } from 'qs';
 const FREE_COLLABORATORS_LIMIT = 10;
 
 const fetchUserByEmail = async (users: UsersService, userEmail: string): Promise<User | undefined> => {
-  const [foundUser] = await users.readByQuery({
+  const results = await users.readByQuery({
     filter: {
       email: {
-        _icontains: userEmail // Directus doesn't have _ieq
+        _icontains: userEmail, // Directus doesn't have _ieq
       },
     },
   });
-  if (!foundUser) {
-    return
-  }
-  if ((foundUser as User).email?.toLowerCase() !== userEmail.toLowerCase()) { // Double check icontains didn't match someone else
-    return
-  }
-  return foundUser as User;
+  // _icontains is a substring match, so filter to exact (case-insensitive) matches
+  const foundUser = (results as User[]).find(
+    (u) => u.email?.toLowerCase() === userEmail.toLowerCase()
+  );
+  return foundUser;
 };
 
 const testSitePermissions = async (public_url: string, siteId: string, token: string) => {

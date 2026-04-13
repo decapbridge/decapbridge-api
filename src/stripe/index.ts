@@ -258,6 +258,10 @@ const endpoint: EndpointConfig = async (router, ctx) => {
           const subscription = event.data.object;
           const subPrice = subscription.items.data[0].price;
           const updatedUser = await waitForCustomerCreation(subscription.customer);
+          if (updatedUser['stripe_price_key'] === 'lifetime') {
+            console.log(`Skipping subscription update for lifetime user ${updatedUser['id']}`);
+            break;
+          }
           const subscriptionUserData = {
             stripe_price_id: subPrice.id,
             stripe_price_key: subPrice.lookup_key,

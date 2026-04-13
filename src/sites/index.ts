@@ -430,16 +430,17 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'User does not exist' });
       }
 
-      // Clear the invite token now that it's been used
+      // Validate and clear the invite token
       const [collaboratorRecord] = await collaborators.readByQuery({
         filter: {
           sites_id: { _eq: site['id'] },
           directus_users_id: { _eq: userId },
         },
       });
-      if (collaboratorRecord) {
-        await collaborators.updateOne(collaboratorRecord['id'], { invite_token: null });
+      if (!collaboratorRecord || collaboratorRecord['invite_token'] !== token) {
+        throw new InvalidPayloadError({ reason: 'Invalid or expired invite token' });
       }
+      await collaborators.updateOne(collaboratorRecord['id'], { invite_token: null });
 
       let redirectUrl = site['cms_url'];
 

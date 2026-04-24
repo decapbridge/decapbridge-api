@@ -10,6 +10,11 @@
     },
     "entries": [
       {
+        "type": "hook",
+        "name": "sentry",
+        "source": "src/sentry/index.ts"
+      },
+      {
         "type": "endpoint",
         "name": "health",
         "source": "src/health/index.ts"
@@ -63,6 +68,7 @@
     "host": "^10.10.4"
   },
   "dependencies": {
+    "@sentry/node": "^10.50.0",
     "directus": "^11.13.4",
     "stripe": "^20.0.0",
     "zod": "^4.0.17"

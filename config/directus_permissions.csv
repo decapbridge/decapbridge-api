@@ -7,11 +7,12 @@
 11,"sites","read",,,,"[""id"",""status"",""sort"",""user_updated"",""date_created"",""user_created"",""date_updated"",""repo"",""access_token"",""collaborators"",""cms_url"",""git_provider"",""auth_type"",""name"",""logo"",""color""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""_or"":[{""user_created"":{""_eq"":""$CURRENT_USER""}},{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""}}}]}]"
 12,"sites","update",,,,"[""repo"",""access_token"",""cms_url"",""collaborators"",""git_provider"",""auth_type"",""name"",""logo"",""color""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""user_created"":{""_eq"":""$CURRENT_USER""}}]"
 13,"sites","delete",,,,,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""user_created"":{""_eq"":""$CURRENT_USER""}}]"
-14,"sites_directus_users","read",,,,"[""id"",""sites_id"",""directus_users_id"",""invite_token""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""_or"":[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}},{""sites_id"":{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""}}}}]}]"
-15,"sites_directus_users","delete",,,,,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}}]"
+14,"sites_directus_users","read",,,,"[""id"",""sites_id"",""directus_users_id"",""invite_token"",""role""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""_or"":[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}},{""sites_id"":{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""}}}}]}]"
+15,"sites_directus_users","delete",,,,,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""_or"":[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}},{""sites_id"":{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""},""role"":{""_eq"":""admin""}}}}]}]"
 16,"directus_files","create","{}","{}",,"[""*""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc",
 17,"directus_files","read",,,,"[""id""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""uploaded_by"":{""_eq"":""$CURRENT_USER""}}]"
 18,"directus_files","read",,,,"[""*""]","abf8a154-5b1c-4a46-ac9c-7300570f4f17",
 19,"directus_activity","read",,,,"[""*""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""user"":{""_eq"":""$CURRENT_USER""}}]"
 20,"directus_translations","read",,,,"[""*""]","abf8a154-5b1c-4a46-ac9c-7300570f4f17",
 21,"directus_files","delete",,,,,"df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""uploaded_by"":{""_eq"":""$CURRENT_USER""}}]"
+22,"sites_directus_users","update",,,,"[""role""]","df72f2d8-53ef-4ddb-a2f0-579edb727ccc","[{""_or"":[{""sites_id"":{""user_created"":{""_eq"":""$CURRENT_USER""}}},{""sites_id"":{""collaborators"":{""directus_users_id"":{""_eq"":""$CURRENT_USER""},""role"":{""_eq"":""admin""}}}}]}]"

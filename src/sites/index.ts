@@ -308,6 +308,23 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
 
+      const isOwner = site['user_created'] === maybeUserId;
+      let isAdmin = false;
+      if (!isOwner && maybeUserId) {
+        const [adminRow] = await collaborators.readByQuery({
+          filter: {
+            sites_id: { _eq: site['id'] },
+            directus_users_id: { _eq: maybeUserId },
+            role: { _eq: 'admin' },
+          },
+          limit: 1,
+        });
+        isAdmin = Boolean(adminRow);
+      }
+      if (!isOwner && !isAdmin) {
+        throw new InvalidPayloadError({ reason: 'Only the site owner or an admin can invite collaborators' });
+      }
+
       const [maybeAlreadyInvited] = await collaborators.readByQuery({
         filter: {
           sites_id: { _eq: site['id'] },

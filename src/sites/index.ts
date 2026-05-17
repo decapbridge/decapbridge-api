@@ -502,6 +502,111 @@ const endpoint: EndpointConfig = (router, ctx) => {
       }
     }
   });
+
+  router.post('/:siteId/transfer-ownership', async (req, res) => {
+    const schema = await ctx.getSchema();
+    const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
+    const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', {
+      schema,
+      accountability: (req as any).accountability,
+    });
+    const collaborators = new (ctx.services.ItemsService as typeof ItemsService)('sites_directus_users', { schema });
+    const mail = new (ctx.services.MailService as typeof MailService)({ schema });
+    const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
+
+    try {
+      const callerId = (req as any).accountability?.user;
+      if (!callerId) {
+        throw new InvalidPayloadError({ reason: 'Authentication required' });
+      }
+
+      const { email } = req.body ?? {};
+      if (!email || typeof email !== 'string') {
+        throw new InvalidPayloadError({ reason: 'Missing or invalid "email" field in body' });
+      }
+
+      const site = await sites.readOne(req.params['siteId']);
+      if (!site) {
+        throw new InvalidPayloadError({ reason: 'Site does not exist' });
+      }
+
+      if (site['user_created'] !== callerId) {
+        throw new InvalidPayloadError({ reason: 'Only the site owner can transfer ownership' });
+      }
+
+      const recipient = await fetchUserByEmail(users, email);
+      if (!recipient) {
+        throw new InvalidPayloadError({ reason: 'No user found with that email' });
+      }
+
+      if (recipient.id === callerId) {
+        throw new InvalidPayloadError({ reason: 'You are already the owner of this site' });
+      }
+
+      const [collaboratorRow] = await collaborators.readByQuery({
+        filter: {
+          sites_id: { _eq: site['id'] },
+          directus_users_id: { _eq: recipient.id },
+        },
+        limit: 1,
+      });
+
+      if (!collaboratorRow) {
+        throw new InvalidPayloadError({
+          reason: 'User must be a collaborator on this site before becoming owner',
+        });
+      }
+
+      await ctx.database.transaction(async (trx) => {
+        await trx('sites_directus_users')
+          .where({ id: collaboratorRow['id'] })
+          .update({ directus_users_id: callerId, invite_token: null });
+        await trx('sites').where({ id: site['id'] }).update({ user_created: recipient.id });
+      });
+
+      const projectName = site['name'] || site['repo'].split('/')[1];
+      const oldOwner = (await users.readOne(callerId, { fields: ['email', 'first_name'] })) as User;
+
+      if (ctx.env['EMAIL_FROM']) {
+        try {
+          await mail.send({
+            to: oldOwner['email']!,
+            subject: `Ownership of ${projectName} was transferred`,
+            text: `Hi${oldOwner['first_name'] ? ' ' + oldOwner['first_name'] : ''},\n\nOwnership of ${projectName} was transferred to ${recipient.email}. You remain a collaborator on the site. If this wasn't you, contact support immediately.\n`,
+          });
+        } catch (err) {
+          ctx.logger.warn(`Failed to send transfer email to old owner: ${(err as Error).message}`);
+        }
+
+        try {
+          const { project_url } = await settings.readSingleton({});
+          await mail.send({
+            to: recipient.email!,
+            subject: `You are now the owner of ${projectName}`,
+            text: `Hi${recipient.first_name ? ' ' + recipient.first_name : ''},\n\nYou are now the owner of ${projectName}. Manage it at: ${project_url}/dashboard/sites\n`,
+          });
+        } catch (err) {
+          ctx.logger.warn(`Failed to send transfer email to new owner: ${(err as Error).message}`);
+        }
+      }
+
+      return res.json({
+        success: true,
+        new_owner_id: recipient.id,
+      });
+    } catch (error) {
+      if (isDirectusError(error)) {
+        return res.status(error.status).json({
+          error: error.code,
+          error_description: error.message,
+        });
+      }
+      return res.status(500).json({
+        error: (error as Error).name,
+        error_description: (error as Error).message,
+      });
+    }
+  });
 };
 
 export default endpoint;

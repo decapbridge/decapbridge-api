@@ -48,24 +48,62 @@ const testSitePermissions = async (public_url: string, siteId: string, token: st
 const endpoint: EndpointConfig = (router, ctx) => {
   const public_url = ctx.env['PUBLIC_URL'];
 
+  // Shared error handling. Logs at debug so the failing `stage` surfaces under LOG_LEVEL=debug
+  // without adding noise at the default level, then responds in the route's native format.
+  type ErrorLog = { route: string; siteId?: string; stage?: string };
+
+  const sendError = (res: any, error: unknown, log: ErrorLog) => {
+    ctx.logger.debug({ ...log, err: error }, `${log.route} failed`);
+    if (isDirectusError(error)) {
+      return res.status(error.status).json({ error: error.code, error_description: error.message });
+    }
+    return res.status(500).json({ error: (error as Error).name, error_description: (error as Error).message });
+  };
+
+  // For the auth-redirect routes (pkce, sso-callback): log the failure, then bounce the
+  // browser to a URL the caller computes (login page or CMS, with the error in the query string).
+  const sendRedirectError = (res: any, error: unknown, redirectUrl: string, log: ErrorLog) => {
+    ctx.logger.debug({ ...log, err: error }, `${log.route} failed`);
+    return res.redirect(redirectUrl);
+  };
+
   router.post('/:siteId/token', async (req, res) => {
     const schema = await ctx.getSchema();
     const auth = new (ctx.services.AuthenticationService as typeof AuthenticationService)({ schema });
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
     const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
+    const siteId = req.params['siteId'];
+
+    // Tracks how far token issuance progressed, so failures can be pinpointed at LOG_LEVEL=debug.
+    let stage = 'parse-body';
 
     try {
-      const body: any = parse(String(req.read()));
+      const rawBody = String(req.read());
+      const body: any = parse(rawBody);
+      const grantType = body.code ? 'code' : body.username && body.password ? 'password' : 'unknown';
+      ctx.logger.debug(
+        {
+          siteId,
+          grantType,
+          contentType: req.headers['content-type'],
+          rawBodyLength: rawBody.length,
+          bodyKeys: Object.keys(body),
+        },
+        'Token request received',
+      );
 
-      const site = await sites.readOne(req.params['siteId']);
+      stage = 'load-site';
+      const site = await sites.readOne(siteId);
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
 
       let user: User;
       if (body.code) {
+        stage = 'resolve-session';
         const record = await ctx.database.select('user').from('directus_sessions').where('token', body.code).first();
         if (!record?.user) {
+          ctx.logger.debug({ siteId }, 'No active session matches the provided code');
           throw new InvalidCredentialsError();
         }
         user = (await users.readOne(record.user)) as User;
@@ -106,8 +144,10 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       let loginResult: LoginResult;
       if (body.code) {
+        stage = 'refresh-token';
         loginResult = await auth.refresh(body.code, loginOptions);
       } else if (body.username && body.password) {
+        stage = 'login';
         loginResult = await auth.login(
           DEFAULT_AUTH_PROVIDER,
           { email: body.username, password: body.password },
@@ -117,8 +157,10 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Missing "username", "password" or "code" field.' });
       }
 
+      stage = 'verify-site-access';
       await testSitePermissions(public_url, site['id'], loginResult.accessToken);
 
+      ctx.logger.debug({ siteId, userId: user['id'] }, 'Issued access token');
       return res.json({
         ...userData,
         token_type: 'bearer',
@@ -128,16 +170,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         user_metadata: userData,
       });
     } catch (error) {
-      if (isDirectusError(error)) {
-        return res.status(error.status).json({
-          error: error.code,
-          error_description: error.message,
-        });
-      }
-      return res.status(500).json({
-        error: (error as Error).name,
-        error_description: (error as Error).message,
-      });
+      return sendError(res, error, { route: 'token', siteId, stage });
     }
   });
 
@@ -146,9 +179,10 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
     const { project_url } = await settings.readSingleton({});
+    const siteId = req.params['siteId'];
 
     try {
-      const site = await sites.readOne(req.params['siteId']);
+      const site = await sites.readOne(siteId);
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
@@ -169,7 +203,8 @@ const endpoint: EndpointConfig = (router, ctx) => {
       const queryString = stringify(queryParams);
       return res.redirect(`${project_url}/auth/login?${queryString}`);
     } catch (error) {
-      return res.redirect(`${project_url}/auth/login?error=${encodeURIComponent((error as Error).message)}`);
+      const redirectUrl = `${project_url}/auth/login?error=${encodeURIComponent((error as Error).message)}`;
+      return sendRedirectError(res, error, redirectUrl, { route: 'pkce', siteId });
     }
   });
 
@@ -178,6 +213,8 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const sites = new (ctx.services.ItemsService as typeof ItemsService)('sites', { schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
     const { project_url } = await settings.readSingleton({});
+    const siteId = req.params['siteId'];
+    let stage = 'load-site';
 
     try {
       if (req.query['reason']) {
@@ -185,7 +222,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         return res.redirect(`${project_url}/auth/login?error=${req.query['reason']}`);
       }
 
-      const site = await sites.readOne(req.params['siteId']);
+      const site = await sites.readOne(siteId);
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
@@ -195,11 +232,13 @@ const endpoint: EndpointConfig = (router, ctx) => {
       }
 
       try {
+        stage = 'verify-site-access';
         const token = req.cookies[ctx.env['SESSION_COOKIE_NAME'] as string];
 
         await testSitePermissions(public_url, site['id'], token);
 
         // Exchange cookie for jwt
+        stage = 'verify-jwt';
         if (!isDirectusJWT(token)) {
           throw new InvalidTokenError();
         }
@@ -215,13 +254,12 @@ const endpoint: EndpointConfig = (router, ctx) => {
         return res.clearCookie(ctx.env['SESSION_COOKIE_NAME']).redirect(cmsUrl);
       } catch (error) {
         const [errMsg, errDesc] = (error as Error).message.split('.');
-
-        return res.redirect(
-          `${site['cms_url']}?state=${req.query['state']}&error=${encodeURIComponent(errMsg ?? '')}&error_description=${encodeURIComponent(errDesc ?? '')}`,
-        );
+        const redirectUrl = `${site['cms_url']}?state=${req.query['state']}&error=${encodeURIComponent(errMsg ?? '')}&error_description=${encodeURIComponent(errDesc ?? '')}`;
+        return sendRedirectError(res, error, redirectUrl, { route: 'sso-callback', siteId, stage });
       }
     } catch (error) {
-      return res.redirect(`${project_url}/auth/login?error=${(error as Error).message}`);
+      const redirectUrl = `${project_url}/auth/login?error=${(error as Error).message}`;
+      return sendRedirectError(res, error, redirectUrl, { route: 'sso-callback', siteId, stage });
     }
   });
 
@@ -229,6 +267,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const schema = await ctx.getSchema();
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
     const maybeUserId = (req as any).accountability?.user;
+    const siteId = req.params['siteId'];
     try {
       if (maybeUserId) {
         const user = await users.readOne(maybeUserId);
@@ -251,17 +290,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         return res.status(403).send('Unauthorized');
       }
     } catch (error) {
-      if (isDirectusError(error)) {
-        return res.status(error.status).json({
-          error: error.code,
-          error_description: error.message,
-        });
-      } else {
-        return res.status(500).json({
-          error: (error as Error).name,
-          error_description: (error as Error).message,
-        });
-      }
+      return sendError(res, error, { route: 'user', siteId });
     }
   });
 
@@ -275,6 +304,8 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const collaborators = new (ctx.services.ItemsService as typeof ItemsService)('sites_directus_users', { schema });
     const mail = new (ctx.services.MailService as typeof MailService)({ schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
+    const siteId = req.params['siteId'];
+    let stage = 'validate-input';
 
     try {
       const { email, first_name, last_name, avatar } = req.body;
@@ -282,6 +313,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Missing "email" field in body' });
       }
 
+      stage = 'resolve-invited-user';
       let invitedUser = await fetchUserByEmail(users, email);
 
       if (!invitedUser) {
@@ -303,7 +335,8 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Cannot invite yourself' });
       }
 
-      const site = await sites.readOne(req.params['siteId']);
+      stage = 'authorize-caller';
+      const site = await sites.readOne(siteId);
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
@@ -337,6 +370,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
       }
 
       // Enforce free account collaborator limit
+      stage = 'enforce-limit';
       const siteOwner = await users.readOne(site['user_created'], { fields: ['stripe_subscription_status'] });
       if (siteOwner['stripe_subscription_status'] !== 'active') {
         const existingCollaborators = await collaborators.readByQuery({
@@ -351,6 +385,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         }
       }
 
+      stage = 'create-collaborator';
       const payload = { email: invitedUser.email, scope: 'password-reset', hash: getSimpleHash('null') };
       const token = jwt.sign(payload, getSecret(), { expiresIn: '30d', issuer: 'directus' });
 
@@ -407,17 +442,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         emailSent,
       });
     } catch (error) {
-      if (isDirectusError(error)) {
-        return res.status(error.status).json({
-          error: error.code,
-          error_description: error.message,
-        });
-      } else {
-        return res.status(500).json({
-          error: (error as Error).name,
-          error_description: (error as Error).message,
-        });
-      }
+      return sendError(res, error, { route: 'invite', siteId, stage });
     }
   });
 
@@ -427,9 +452,11 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const users = new (ctx.services.UsersService as typeof UsersService)({ schema });
     const collaborators = new (ctx.services.ItemsService as typeof ItemsService)('sites_directus_users', { schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
+    const siteId = req.params['siteId'];
+    let stage = 'load-site';
 
     try {
-      const site = await sites.readOne(req.params['siteId']);
+      const site = await sites.readOne(siteId);
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
@@ -448,6 +475,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
       }
 
       // Validate and clear the invite token
+      stage = 'validate-invite-token';
       const [collaboratorRecord] = await collaborators.readByQuery({
         filter: {
           sites_id: { _eq: site['id'] },
@@ -489,17 +517,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
       return res.redirect(redirectUrl);
     } catch (error) {
-      if (isDirectusError(error)) {
-        return res.status(error.status).json({
-          error: error.code,
-          error_description: error.message,
-        });
-      } else {
-        return res.status(500).json({
-          error: (error as Error).name,
-          error_description: (error as Error).message,
-        });
-      }
+      return sendError(res, error, { route: 'join', siteId, stage });
     }
   });
 
@@ -513,6 +531,8 @@ const endpoint: EndpointConfig = (router, ctx) => {
     const collaborators = new (ctx.services.ItemsService as typeof ItemsService)('sites_directus_users', { schema });
     const mail = new (ctx.services.MailService as typeof MailService)({ schema });
     const settings = new (ctx.services.SettingsService as typeof SettingsService)({ schema });
+    const siteId = req.params['siteId'];
+    let stage = 'validate-input';
 
     try {
       const callerId = (req as any).accountability?.user;
@@ -525,7 +545,8 @@ const endpoint: EndpointConfig = (router, ctx) => {
         throw new InvalidPayloadError({ reason: 'Missing or invalid "email" field in body' });
       }
 
-      const site = await sites.readOne(req.params['siteId']);
+      stage = 'authorize-owner';
+      const site = await sites.readOne(siteId);
       if (!site) {
         throw new InvalidPayloadError({ reason: 'Site does not exist' });
       }
@@ -557,6 +578,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         });
       }
 
+      stage = 'transfer';
       await ctx.database.transaction(async (trx) => {
         await trx('sites_directus_users')
           .where({ id: collaboratorRow['id'] })
@@ -595,16 +617,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
         new_owner_id: recipient.id,
       });
     } catch (error) {
-      if (isDirectusError(error)) {
-        return res.status(error.status).json({
-          error: error.code,
-          error_description: error.message,
-        });
-      }
-      return res.status(500).json({
-        error: (error as Error).name,
-        error_description: (error as Error).message,
-      });
+      return sendError(res, error, { route: 'transfer-ownership', siteId, stage });
     }
   });
 };

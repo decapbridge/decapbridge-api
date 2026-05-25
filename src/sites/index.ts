@@ -33,6 +33,22 @@ const fetchUserByEmail = async (users: UsersService, userEmail: string): Promise
   return foundUser;
 };
 
+// gotrue posts the /token body as application/x-www-form-urlencoded, which Directus's global
+// express.json() leaves unparsed. We must read the raw stream ourselves — but a synchronous
+// req.read() returns null when the body isn't buffered yet, intermittently dropping the payload.
+// Await the stream instead so the body is read reliably every time.
+const readRawBody = (req: any): Promise<string> =>
+  new Promise((resolve, reject) => {
+    if (req.readableEnded) {
+      resolve('');
+      return;
+    }
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+
 const testSitePermissions = async (public_url: string, siteId: string, token: string) => {
   const permissionsTestResponse = await fetch(`${public_url}/items/sites/${siteId}`, {
     headers: {
@@ -78,19 +94,11 @@ const endpoint: EndpointConfig = (router, ctx) => {
     let stage = 'parse-body';
 
     try {
-      const rawBody = String(req.read());
-      const body: any = parse(rawBody);
+      // Prefer a body Directus already parsed (JSON); otherwise read the urlencoded gotrue payload.
+      const body: any =
+        req.body && Object.keys(req.body).length ? req.body : parse(await readRawBody(req));
       const grantType = body.code ? 'code' : body.username && body.password ? 'password' : 'unknown';
-      ctx.logger.debug(
-        {
-          siteId,
-          grantType,
-          contentType: req.headers['content-type'],
-          rawBodyLength: rawBody.length,
-          bodyKeys: Object.keys(body),
-        },
-        'Token request received',
-      );
+      ctx.logger.debug({ siteId, grantType, contentType: req.headers['content-type'] }, 'Token request received');
 
       stage = 'load-site';
       const site = await sites.readOne(siteId);

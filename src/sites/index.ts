@@ -13,6 +13,7 @@ import { getSecret } from '@directus/api/utils/get-secret';
 import { verifyAccessJWT } from '@directus/api/utils/jwt';
 import isDirectusJWT from '@directus/api/utils/is-directus-jwt';
 import { getSimpleHash } from '@directus/utils';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { parse, stringify } from 'qs';
 
@@ -153,7 +154,15 @@ const endpoint: EndpointConfig = (router, ctx) => {
       let loginResult: LoginResult;
       if (body.code) {
         stage = 'refresh-token';
-        loginResult = await auth.refresh(body.code, loginOptions);
+        // Refreshing rotates the token in place, which would kill the dashboard session that was
+        // handed over as the PKCE code. Fork it into a separate session for the CMS instead.
+        const cmsToken = crypto.randomBytes(48).toString('base64url');
+        await ctx.database('directus_sessions').insert({
+          ...(await ctx.database.select('*').from('directus_sessions').where('token', body.code).first()),
+          token: cmsToken,
+          next_token: null,
+        });
+        loginResult = await auth.refresh(cmsToken, loginOptions);
       } else if (body.username && body.password) {
         stage = 'login';
         loginResult = await auth.login(

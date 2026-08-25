@@ -295,6 +295,28 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
         // TODO: Remove the token from the session?
 
+        // Route the handoff through the web app instead of straight to the CMS: the web
+        // /auth/sso-callback page consumes the code and seeds a persistent dashboard session
+        // (SSO otherwise leaves no client-side session behind, forcing a full SSO round-trip
+        // on every CMS visit), then forwards to the PKCE login page, whose normal handoff
+        // delivers a fresh code to the CMS.
+        try {
+          const requestedUri = req.query['redirect_uri'];
+          if (typeof requestedUri === 'string' && requestedUri) {
+            const loginUrl = new URL(`${project_url}/auth/login`);
+            loginUrl.searchParams.set('site_id', String(site['id']));
+            loginUrl.searchParams.set('state', String(req.query['state']));
+            loginUrl.searchParams.set('redirect_uri', requestedUri);
+            const webUrl = new URL(`${project_url}/auth/sso-callback`);
+            webUrl.searchParams.set('code', refreshToken);
+            webUrl.searchParams.set('redirect_uri', loginUrl.href);
+            return res.clearCookie(ctx.env['SESSION_COOKIE_NAME']).redirect(webUrl.href);
+          }
+        } catch {
+          // fall through to the direct CMS redirect
+        }
+
+        // Older clients that don't send redirect_uri: hand the code to the CMS directly
         const cmsUrl = buildCmsRedirect(site['cms_url'], req.query['redirect_uri'], {
           state: String(req.query['state']),
           code: refreshToken,

@@ -50,6 +50,34 @@ const readRawBody = (req: any): Promise<string> =>
     req.on('error', reject);
   });
 
+
+// Build the redirect back to the CMS after SSO. Prefer the redirect_uri the CMS itself sent
+// (Decap's own origin+pathname), but only when it matches the stored cms_url's origin, to
+// avoid an open redirect. Use the URL API so query params land before any #fragment in
+// cms_url (e.g. "https://site.com/admin/#/") -- Decap only reads location.search.
+const buildCmsRedirect = (cmsUrl: string, requestedUri: unknown, params: Record<string, string>) => {
+  try {
+    let url = new URL(cmsUrl);
+    if (typeof requestedUri === 'string' && requestedUri) {
+      try {
+        const requested = new URL(requestedUri);
+        if (requested.origin === url.origin) {
+          url = requested;
+        }
+      } catch {
+        // ignore malformed redirect_uri
+      }
+    }
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, value);
+    }
+    return url.href;
+  } catch {
+    // cms_url isn't a valid URL -- fall back to the legacy concatenation
+    return `${cmsUrl}?${new URLSearchParams(params)}`;
+  }
+};
+
 const testSitePermissions = async (public_url: string, siteId: string, token: string) => {
   const permissionsTestResponse = await fetch(`${public_url}/items/sites/${siteId}`, {
     headers: {
@@ -267,11 +295,18 @@ const endpoint: EndpointConfig = (router, ctx) => {
 
         // TODO: Remove the token from the session?
 
-        const cmsUrl = `${site['cms_url']}?state=${req.query['state']}&code=${refreshToken}`;
+        const cmsUrl = buildCmsRedirect(site['cms_url'], req.query['redirect_uri'], {
+          state: String(req.query['state']),
+          code: refreshToken,
+        });
         return res.clearCookie(ctx.env['SESSION_COOKIE_NAME']).redirect(cmsUrl);
       } catch (error) {
         const [errMsg, errDesc] = (error as Error).message.split('.');
-        const redirectUrl = `${site['cms_url']}?state=${req.query['state']}&error=${encodeURIComponent(errMsg ?? '')}&error_description=${encodeURIComponent(errDesc ?? '')}`;
+        const redirectUrl = buildCmsRedirect(site['cms_url'], req.query['redirect_uri'], {
+          state: String(req.query['state']),
+          error: errMsg ?? '',
+          error_description: errDesc ?? '',
+        });
         return sendRedirectError(res, error, redirectUrl, { route: 'sso-callback', siteId, stage });
       }
     } catch (error) {

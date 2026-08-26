@@ -176,6 +176,7 @@ const endpoint: EndpointConfig = (router, ctx) => {
           git_provider: site['git_provider'],
           repo: site['repo'],
           access_token: site['access_token'],
+          hide_commit_author: site['hide_commit_author'],
         },
       } as any;
 
